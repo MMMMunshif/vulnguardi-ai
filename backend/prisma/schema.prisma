@@ -8,9 +8,9 @@ datasource db {
 }
 
 model Organization {
-  id          String       @id @default(uuid())
+  id          String             @id @default(uuid())
   name        String
-  email       String       @unique
+  email       String             @unique
   phone       String?
   website     String?
   industry    String?
@@ -19,9 +19,10 @@ model Organization {
 
   users       User[]
   departments Department[]
+  devices     Device[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 }
 
 model Role {
@@ -44,37 +45,60 @@ model Department {
 
   users          User[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model User {
-  id             String      @id @default(uuid())
+  id              String      @id @default(uuid())
 
-  firstName      String
-  lastName       String
+  firstName       String
+  lastName        String
 
-  email          String      @unique
-  password       String
+  email           String      @unique
+  password        String
 
-  phone          String?
-  profileImage   String?
+  phone           String?
+  profileImage    String?
 
-  status         UserStatus  @default(ACTIVE)
+  status          UserStatus  @default(ACTIVE)
 
-  lastLogin      DateTime?
+  lastLogin       DateTime?
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  departmentId    String
+  department      Department   @relation(fields: [departmentId], references: [id])
+
+  roleId          String
+  role            Role         @relation(fields: [roleId], references: [id])
+
+  assignedDevices Device[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model Device {
+  id             String       @id @default(uuid())
+
+  hostname       String
+  ipAddress      String?
+  macAddress     String?
+  osName         String?
+  osVersion      String?
+  deviceType     DeviceType   @default(WORKSTATION)
+  status         DeviceStatus @default(ACTIVE)
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  departmentId   String
-  department     Department @relation(fields: [departmentId], references: [id])
+  assignedUserId String?
+  assignedUser   User?        @relation(fields: [assignedUserId], references: [id])
 
-  roleId         String
-  role           Role @relation(fields: [roleId], references: [id])
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 enum OrganizationStatus {
@@ -82,7 +106,23 @@ enum OrganizationStatus {
   SUSPENDED
 }
 
-enum UserStatus { 
+enum UserStatus {
   ACTIVE
   INACTIVE
+}
+
+enum DeviceType {
+  LAPTOP
+  DESKTOP
+  SERVER
+  WORKSTATION
+  CLOUD_VM
+  NETWORK_DEVICE
+  OTHER
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+  RETIRED
 }
