@@ -1,16 +1,21 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { DevicesModule } from './modules/devices/devices.module';
+import { SoftwareInventoryModule } from './modules/software-inventory/software-inventory.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, OrganizationsModule, DepartmentsModule, DevicesModule],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    OrganizationsModule,
+    DepartmentsModule,
+    DevicesModule,
+    SoftwareInventoryModule,
+  ],
 })
 export class AppModule {}

@@ -20,6 +20,7 @@ model Organization {
   users       User[]
   departments Department[]
   devices     Device[]
+  softwareInventory SoftwareInventory[]
 
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -50,18 +51,18 @@ model Department {
 }
 
 model User {
-  id              String      @id @default(uuid())
+  id              String       @id @default(uuid())
 
   firstName       String
   lastName        String
 
-  email           String      @unique
+  email           String       @unique
   password        String
 
   phone           String?
   profileImage    String?
 
-  status          UserStatus  @default(ACTIVE)
+  status          UserStatus   @default(ACTIVE)
 
   lastLogin       DateTime?
 
@@ -97,8 +98,37 @@ model Device {
   assignedUserId String?
   assignedUser   User?        @relation(fields: [assignedUserId], references: [id])
 
+  softwareInventory SoftwareInventory[]
+
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+}
+
+model SoftwareInventory {
+  id               String         @id @default(uuid())
+
+  softwareName     String
+  publisher        String?
+  installedVersion String?
+  installedPath    String?
+  installDate      DateTime?
+  lastUsedAt       DateTime?
+
+  source           SoftwareSource @default(MANUAL)
+  status           SoftwareStatus @default(INSTALLED)
+
+  deviceId         String
+  device           Device         @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  organizationId   String
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([deviceId, softwareName])
+  @@index([deviceId])
+  @@index([organizationId])
 }
 
 enum OrganizationStatus {
@@ -125,4 +155,16 @@ enum DeviceStatus {
   ACTIVE
   INACTIVE
   RETIRED
+}
+
+enum SoftwareSource {
+  MANUAL
+  SYSTEM_SCAN
+  IMPORTED
+}
+
+enum SoftwareStatus {
+  INSTALLED
+  REMOVED
+  UNKNOWN
 }
