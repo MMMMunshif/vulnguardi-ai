@@ -23,6 +23,7 @@ model Organization {
   softwareInventory       SoftwareInventory[]
   softwareUpdateFindings  SoftwareUpdateFinding[]
   vulnerabilityFindings   VulnerabilityFinding[]
+  remediationActions      RemediationAction[]
 
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -77,7 +78,8 @@ model User {
   roleId          String
   role            Role         @relation(fields: [roleId], references: [id])
 
-  assignedDevices Device[]
+  assignedDevices            Device[]
+  assignedRemediationActions RemediationAction[]
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -103,6 +105,7 @@ model Device {
   softwareInventory      SoftwareInventory[]
   softwareUpdateFindings SoftwareUpdateFinding[]
   vulnerabilityFindings  VulnerabilityFinding[]
+  remediationActions     RemediationAction[]
 
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -129,6 +132,7 @@ model SoftwareInventory {
 
   updateFindings        SoftwareUpdateFinding[]
   vulnerabilityFindings VulnerabilityFinding[]
+  remediationActions    RemediationAction[]
 
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -202,6 +206,8 @@ model VulnerabilityFinding {
   organizationId        String
   organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  remediationActions    RemediationAction[]
+
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
 
@@ -210,6 +216,48 @@ model VulnerabilityFinding {
   @@index([deviceId])
   @@index([organizationId])
   @@index([cveId])
+}
+
+model RemediationAction {
+  id                      String                         @id @default(uuid())
+
+  actionTitle             String
+  actionDescription       String?
+  recommendedFix          String?
+
+  actionType              RemediationActionType          @default(UPDATE_SOFTWARE)
+  status                  RemediationStatus              @default(PENDING)
+  verificationStatus      RemediationVerificationStatus  @default(NOT_VERIFIED)
+
+  dueDate                 DateTime?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  verificationNotes       String?
+  notes                   String?
+
+  vulnerabilityFindingId  String
+  vulnerabilityFinding    VulnerabilityFinding           @relation(fields: [vulnerabilityFindingId], references: [id], onDelete: Cascade)
+
+  softwareInventoryId     String
+  softwareInventory       SoftwareInventory              @relation(fields: [softwareInventoryId], references: [id], onDelete: Cascade)
+
+  deviceId                String
+  device                  Device                         @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  organizationId          String
+  organization            Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  assignedUserId          String?
+  assignedUser            User?                          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+
+  @@index([vulnerabilityFindingId])
+  @@index([softwareInventoryId])
+  @@index([deviceId])
+  @@index([organizationId])
+  @@index([assignedUserId])
 }
 
 enum OrganizationStatus {
@@ -288,4 +336,26 @@ enum VulnerabilityStatus {
   RESOLVED
   ACCEPTED_RISK
   FALSE_POSITIVE
+}
+
+enum RemediationActionType {
+  UPDATE_SOFTWARE
+  CONFIGURATION_CHANGE
+  REMOVE_SOFTWARE
+  ACCEPT_RISK
+  VERIFY_PATCH
+  OTHER
+}
+
+enum RemediationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RemediationVerificationStatus {
+  NOT_VERIFIED
+  VERIFIED
+  FAILED
 }

@@ -8,6 +8,7 @@ import { DevicesModule } from './modules/devices/devices.module';
 import { SoftwareInventoryModule } from './modules/software-inventory/software-inventory.module';
 import { SoftwareUpdateFindingsModule } from './modules/software-update-findings/software-update-findings.module';
 import { VulnerabilityFindingsModule } from './modules/vulnerability-findings/vulnerability-findings.module';
+import { RemediationActionsModule } from './modules/remediation-actions/remediation-actions.module';
 
 
 @Module({
@@ -21,6 +22,7 @@ import { VulnerabilityFindingsModule } from './modules/vulnerability-findings/vu
     SoftwareInventoryModule,
     SoftwareUpdateFindingsModule,
     VulnerabilityFindingsModule,
+    RemediationActionsModule,
   ],
 })
 export class AppModule {}
