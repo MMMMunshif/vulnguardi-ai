@@ -9,6 +9,7 @@ import { SoftwareInventoryModule } from './modules/software-inventory/software-i
 import { SoftwareUpdateFindingsModule } from './modules/software-update-findings/software-update-findings.module';
 import { VulnerabilityFindingsModule } from './modules/vulnerability-findings/vulnerability-findings.module';
 import { RemediationActionsModule } from './modules/remediation-actions/remediation-actions.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 
 @Module({
@@ -23,6 +24,7 @@ import { RemediationActionsModule } from './modules/remediation-actions/remediat
     SoftwareUpdateFindingsModule,
     VulnerabilityFindingsModule,
     RemediationActionsModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}
