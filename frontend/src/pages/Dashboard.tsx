@@ -35,11 +35,7 @@ function Dashboard() {
   }, []);
 
   if (!summary) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        Loading dashboard...
-      </div>
-    );
+    return <p className="text-slate-400">Loading dashboard...</p>;
   }
 
   const cards = [
@@ -54,27 +50,41 @@ function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-slate-800 px-8 py-5">
-        <h1 className="text-2xl font-bold">VulnGuard AI Dashboard</h1>
-        <p className="text-slate-400 mt-1">
-          Security overview and remediation status
-        </p>
-      </header>
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
 
-      <main className="p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {cards.map((card) => (
-            <div
-              key={card.title}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-6"
-            >
-              <p className="text-slate-400 text-sm">{card.title}</p>
-              <h2 className="text-3xl font-bold mt-3">{card.value}</h2>
-            </div>
-          ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {cards.map((card) => (
+          <div
+            key={card.title}
+            className="bg-slate-900 border border-slate-800 rounded-xl p-6"
+          >
+            <p className="text-slate-400 text-sm">{card.title}</p>
+            <h2 className="text-3xl font-bold mt-3">{card.value}</h2>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <h2 className="text-lg font-bold">Vulnerability Status</h2>
+          <div className="mt-4 space-y-3 text-sm">
+            <p>Open: {summary.vulnerabilities.open}</p>
+            <p>In Progress: {summary.vulnerabilities.inProgress}</p>
+            <p>Resolved: {summary.vulnerabilities.resolved}</p>
+          </div>
         </div>
-      </main>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <h2 className="text-lg font-bold">Remediation Status</h2>
+          <div className="mt-4 space-y-3 text-sm">
+            <p>Pending: {summary.remediationActions.pending}</p>
+            <p>In Progress: {summary.remediationActions.inProgress}</p>
+            <p>Completed: {summary.remediationActions.completed}</p>
+            <p>Cancelled: {summary.remediationActions.cancelled}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
