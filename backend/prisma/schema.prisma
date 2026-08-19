@@ -21,6 +21,7 @@ model Organization {
   departments Department[]
   devices     Device[]
   softwareInventory SoftwareInventory[]
+  softwareUpdateFindings SoftwareUpdateFinding[]
 
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -99,6 +100,7 @@ model Device {
   assignedUser   User?        @relation(fields: [assignedUserId], references: [id])
 
   softwareInventory SoftwareInventory[]
+  softwareUpdateFindings SoftwareUpdateFinding[]
 
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -123,10 +125,41 @@ model SoftwareInventory {
   organizationId   String
   organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  updateFindings   SoftwareUpdateFinding[]
+
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
   @@unique([deviceId, softwareName])
+  @@index([deviceId])
+  @@index([organizationId])
+}
+
+model SoftwareUpdateFinding {
+  id                  String               @id @default(uuid())
+
+  installedVersion    String?
+  latestVersion       String?
+  updateAvailable     Boolean              @default(false)
+  status              SoftwareUpdateStatus @default(UNKNOWN)
+  source              UpdateCheckSource    @default(MANUAL)
+
+  checkedAt           DateTime             @default(now())
+  notes               String?
+
+  softwareInventoryId String
+  softwareInventory   SoftwareInventory    @relation(fields: [softwareInventoryId], references: [id], onDelete: Cascade)
+
+  deviceId            String
+  device              Device               @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  organizationId      String
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([softwareInventoryId])
   @@index([deviceId])
   @@index([organizationId])
 }
@@ -167,4 +200,17 @@ enum SoftwareStatus {
   INSTALLED
   REMOVED
   UNKNOWN
+}
+
+enum SoftwareUpdateStatus {
+  UP_TO_DATE
+  OUTDATED
+  UNKNOWN
+}
+
+enum UpdateCheckSource {
+  MANUAL
+  WINGET
+  SYSTEM_SCAN
+  IMPORTED
 }

@@ -6,6 +6,8 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { DevicesModule } from './modules/devices/devices.module';
 import { SoftwareInventoryModule } from './modules/software-inventory/software-inventory.module';
+import { SoftwareUpdateFindingsModule } from './modules/software-update-findings/software-update-findings.module';
+
 
 @Module({
   imports: [
@@ -16,6 +18,7 @@ import { SoftwareInventoryModule } from './modules/software-inventory/software-i
     DepartmentsModule,
     DevicesModule,
     SoftwareInventoryModule,
+    SoftwareUpdateFindingsModule,
   ],
 })
 export class AppModule {}
