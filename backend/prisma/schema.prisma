@@ -17,11 +17,12 @@ model Organization {
   country     String?
   status      OrganizationStatus @default(ACTIVE)
 
-  users       User[]
-  departments Department[]
-  devices     Device[]
-  softwareInventory SoftwareInventory[]
-  softwareUpdateFindings SoftwareUpdateFinding[]
+  users                   User[]
+  departments             Department[]
+  devices                 Device[]
+  softwareInventory       SoftwareInventory[]
+  softwareUpdateFindings  SoftwareUpdateFinding[]
+  vulnerabilityFindings   VulnerabilityFinding[]
 
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -99,8 +100,9 @@ model Device {
   assignedUserId String?
   assignedUser   User?        @relation(fields: [assignedUserId], references: [id])
 
-  softwareInventory SoftwareInventory[]
+  softwareInventory      SoftwareInventory[]
   softwareUpdateFindings SoftwareUpdateFinding[]
+  vulnerabilityFindings  VulnerabilityFinding[]
 
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -125,7 +127,8 @@ model SoftwareInventory {
   organizationId   String
   organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  updateFindings   SoftwareUpdateFinding[]
+  updateFindings        SoftwareUpdateFinding[]
+  vulnerabilityFindings VulnerabilityFinding[]
 
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -156,12 +159,57 @@ model SoftwareUpdateFinding {
   organizationId      String
   organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  vulnerabilityFindings VulnerabilityFinding[]
+
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
   @@index([softwareInventoryId])
   @@index([deviceId])
   @@index([organizationId])
+}
+
+model VulnerabilityFinding {
+  id                    String                    @id @default(uuid())
+
+  cveId                 String?
+  title                 String
+  description           String?
+
+  affectedVersion       String?
+  fixedVersion          String?
+
+  publishedDate         DateTime?
+  lastModifiedDate      DateTime?
+
+  exploitAvailability   ExploitAvailability       @default(UNKNOWN)
+  fixAvailability       FixAvailability           @default(UNKNOWN)
+  status                VulnerabilityStatus       @default(OPEN)
+  source                VulnerabilitySource       @default(MANUAL)
+
+  referenceUrl          String?
+  notes                 String?
+
+  softwareInventoryId   String
+  softwareInventory     SoftwareInventory         @relation(fields: [softwareInventoryId], references: [id], onDelete: Cascade)
+
+  softwareUpdateFindingId String?
+  softwareUpdateFinding   SoftwareUpdateFinding?  @relation(fields: [softwareUpdateFindingId], references: [id], onDelete: SetNull)
+
+  deviceId              String
+  device                Device                    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  organizationId        String
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  @@index([softwareInventoryId])
+  @@index([softwareUpdateFindingId])
+  @@index([deviceId])
+  @@index([organizationId])
+  @@index([cveId])
 }
 
 enum OrganizationStatus {
@@ -213,4 +261,31 @@ enum UpdateCheckSource {
   WINGET
   SYSTEM_SCAN
   IMPORTED
+}
+
+enum VulnerabilitySource {
+  MANUAL
+  NVD
+  SCANNER
+  IMPORTED
+}
+
+enum ExploitAvailability {
+  UNKNOWN
+  NO_KNOWN_EXPLOIT
+  PUBLIC_EXPLOIT_AVAILABLE
+}
+
+enum FixAvailability {
+  UNKNOWN
+  FIX_AVAILABLE
+  NO_FIX_AVAILABLE
+}
+
+enum VulnerabilityStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ACCEPTED_RISK
+  FALSE_POSITIVE
 }

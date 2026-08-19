@@ -7,6 +7,7 @@ import { DepartmentsModule } from './modules/departments/departments.module';
 import { DevicesModule } from './modules/devices/devices.module';
 import { SoftwareInventoryModule } from './modules/software-inventory/software-inventory.module';
 import { SoftwareUpdateFindingsModule } from './modules/software-update-findings/software-update-findings.module';
+import { VulnerabilityFindingsModule } from './modules/vulnerability-findings/vulnerability-findings.module';
 
 
 @Module({
@@ -19,6 +20,7 @@ import { SoftwareUpdateFindingsModule } from './modules/software-update-findings
     DevicesModule,
     SoftwareInventoryModule,
     SoftwareUpdateFindingsModule,
+    VulnerabilityFindingsModule,
   ],
 })
 export class AppModule {}
