@@ -7,6 +7,8 @@ import Organizations from './pages/Organizations';
 import Departments from './pages/Departments';
 import Users from './pages/Users';
 import Devices from './pages/Devices';
+import SoftwareInventory from './pages/SoftwareInventory';  
+import SoftwareUpdateFindings from './pages/SoftwareUpdateFindings';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -43,25 +45,12 @@ function App() {
 
           <Route path="/devices" element={<Devices />} />
 
-          <Route
-            path="/software-inventory"
-            element={
-              <ComingSoon
-                title="Software Inventory"
-                description="Track installed software records for each device."
-              />
-            }
-          />
+          <Route path="/software-inventory" element={<SoftwareInventory />} />
 
           <Route
-            path="/software-update-findings"
-            element={
-              <ComingSoon
-                title="Software Update Findings"
-                description="Track outdated software and latest version information."
-              />
-            }
-          />
+  path="/software-update-findings"
+  element={<SoftwareUpdateFindings />}
+/>
 
           <Route
             path="/vulnerability-findings"
