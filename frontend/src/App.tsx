@@ -9,6 +9,7 @@ import Users from './pages/Users';
 import Devices from './pages/Devices';
 import SoftwareInventory from './pages/SoftwareInventory';  
 import SoftwareUpdateFindings from './pages/SoftwareUpdateFindings';
+import VulnerabilityFindings from './pages/VulnerabilityFindings';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -52,15 +53,10 @@ function App() {
   element={<SoftwareUpdateFindings />}
 />
 
-          <Route
-            path="/vulnerability-findings"
-            element={
-              <ComingSoon
-                title="Vulnerability Findings"
-                description="Manage CVEs and vulnerability findings."
-              />
-            }
-          />
+<Route
+  path="/vulnerability-findings"
+  element={<VulnerabilityFindings />}
+/>
 
           <Route
             path="/remediation-actions"
