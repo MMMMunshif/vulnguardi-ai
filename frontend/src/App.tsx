@@ -10,6 +10,7 @@ import Devices from './pages/Devices';
 import SoftwareInventory from './pages/SoftwareInventory';  
 import SoftwareUpdateFindings from './pages/SoftwareUpdateFindings';
 import VulnerabilityFindings from './pages/VulnerabilityFindings';
+import RemediationActions from './pages/RemediationActions';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -58,15 +59,7 @@ function App() {
   element={<VulnerabilityFindings />}
 />
 
-          <Route
-            path="/remediation-actions"
-            element={
-              <ComingSoon
-                title="Remediation Actions"
-                description="Track remediation tasks and verification status."
-              />
-            }
-          />
+<Route path="/remediation-actions" element={<RemediationActions />} />
         </Route>
       </Routes>
     </BrowserRouter>
