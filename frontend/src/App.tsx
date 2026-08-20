@@ -5,6 +5,9 @@ import MainLayout from './layouts/MainLayout';
 import ComingSoon from './pages/ComingSoon';
 import Organizations from './pages/Organizations';
 import Departments from './pages/Departments';
+import Users from './pages/Users';
+import Devices from './pages/Devices';
+
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('accessToken');
@@ -36,25 +39,9 @@ function App() {
 
           <Route path="/departments" element={<Departments />} />
 
-          <Route
-            path="/users"
-            element={
-              <ComingSoon
-                title="Users"
-                description="Manage users, roles, and access permissions."
-              />
-            }
-          />
+          <Route path="/users" element={<Users />} />
 
-          <Route
-            path="/devices"
-            element={
-              <ComingSoon
-                title="Devices"
-                description="Manage device and asset inventory."
-              />
-            }
-          />
+          <Route path="/devices" element={<Devices />} />
 
           <Route
             path="/software-inventory"
