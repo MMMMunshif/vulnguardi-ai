@@ -1,9 +1,15 @@
-import {
+  import {
     BadRequestException,
+    ConflictException,
     Injectable,
     NotFoundException,
   } from '@nestjs/common';
-  import { Prisma, RemediationStatus } from '@prisma/client';
+  import {
+    Prisma,
+    RemediationStatus,
+    RemediationVerificationStatus,
+    VulnerabilityStatus,
+  } from '@prisma/client';
   import { PrismaService } from '../../prisma/prisma.service';
   import { CreateRemediationActionDto } from './dto/create-remediation-action.dto';
   import { UpdateRemediationActionDto } from './dto/update-remediation-action.dto';
@@ -69,8 +75,9 @@ import {
       },
     };
   
-    async findAll() {
+    async findAll(organizationId?: string) {
       const actions = await this.prisma.remediationAction.findMany({
+        where: organizationId ? { organizationId } : undefined,
         orderBy: {
           createdAt: 'desc',
         },
@@ -83,11 +90,9 @@ import {
       };
     }
   
-    async findOne(id: string) {
-      const action = await this.prisma.remediationAction.findUnique({
-        where: {
-          id,
-        },
+    async findOne(id: string, organizationId?: string) {
+      const action = await this.prisma.remediationAction.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
         select: this.remediationSelect,
       });
   
@@ -101,16 +106,35 @@ import {
       };
     }
   
-    async create(createDto: CreateRemediationActionDto) {
+    async create(createDto: CreateRemediationActionDto, organizationId?: string) {
       const vulnerabilityFinding =
-        await this.prisma.vulnerabilityFinding.findUnique({
+        await this.prisma.vulnerabilityFinding.findFirst({
           where: {
             id: createDto.vulnerabilityFindingId,
+            ...(organizationId ? { organizationId } : {}),
           },
         });
   
       if (!vulnerabilityFinding) {
         throw new NotFoundException('Vulnerability finding not found');
+      }
+
+      const existingRemediation =
+        await this.prisma.remediationAction.findFirst({
+          where: {
+            vulnerabilityFindingId: vulnerabilityFinding.id,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (existingRemediation) {
+        throw new ConflictException({
+          message:
+            'A remediation action already exists for this vulnerability finding',
+          existingActionId: existingRemediation.id,
+        });
       }
   
       if (createDto.assignedUserId) {
@@ -153,11 +177,9 @@ import {
       };
     }
   
-    async update(id: string, updateDto: UpdateRemediationActionDto) {
-      const existingAction = await this.prisma.remediationAction.findUnique({
-        where: {
-          id,
-        },
+    async update(id: string, updateDto: UpdateRemediationActionDto, organizationId?: string) {
+      const existingAction = await this.prisma.remediationAction.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
       });
   
       if (!existingAction) {
@@ -185,6 +207,14 @@ import {
       ) {
         updateDto.completedAt = new Date().toISOString();
       }
+
+      if (
+        updateDto.status === RemediationStatus.IN_PROGRESS &&
+        !updateDto.startedAt &&
+        !existingAction.startedAt
+      ) {
+        updateDto.startedAt = new Date().toISOString();
+      }
   
       if (
         updateDto.completedAt &&
@@ -193,6 +223,20 @@ import {
       ) {
         throw new BadRequestException(
           'completedAt can only be set when status is COMPLETED',
+        );
+      }
+
+      const requestedStatus = updateDto.status ?? existingAction.status;
+      const requestedVerificationStatus =
+        updateDto.verificationStatus ?? existingAction.verificationStatus;
+
+      if (
+        requestedVerificationStatus ===
+          RemediationVerificationStatus.VERIFIED &&
+        requestedStatus !== RemediationStatus.COMPLETED
+      ) {
+        throw new BadRequestException(
+          'verificationStatus can only be VERIFIED when status is COMPLETED',
         );
       }
   
@@ -220,18 +264,48 @@ import {
         },
         select: this.remediationSelect,
       });
+
+      const finalStatus = updateDto.status ?? existingAction.status;
+      const finalVerificationStatus =
+        updateDto.verificationStatus ?? existingAction.verificationStatus;
+      const vulnerabilityResolved =
+        finalStatus === RemediationStatus.COMPLETED &&
+        finalVerificationStatus === RemediationVerificationStatus.VERIFIED;
+      const vulnerabilityInProgress =
+        finalStatus === RemediationStatus.IN_PROGRESS;
+      const synchronizedVulnerabilityStatus = vulnerabilityResolved
+        ? VulnerabilityStatus.RESOLVED
+        : vulnerabilityInProgress
+          ? VulnerabilityStatus.IN_PROGRESS
+          : null;
+
+      if (synchronizedVulnerabilityStatus) {
+        await this.prisma.vulnerabilityFinding.update({
+          where: {
+            id: existingAction.vulnerabilityFindingId,
+          },
+          data: {
+            status: synchronizedVulnerabilityStatus,
+          },
+        });
+      }
   
       return {
-        message: 'Remediation action updated successfully',
+        message: vulnerabilityResolved
+          ? 'Remediation action updated and vulnerability resolved successfully'
+          : vulnerabilityInProgress
+            ? 'Remediation action and vulnerability marked as in progress'
+          : 'Remediation action updated successfully',
         action: updatedAction,
+        vulnerabilityResolved,
+        vulnerabilityInProgress,
+        vulnerabilityStatus: synchronizedVulnerabilityStatus,
       };
     }
   
-    async remove(id: string) {
-      const existingAction = await this.prisma.remediationAction.findUnique({
-        where: {
-          id,
-        },
+    async remove(id: string, organizationId?: string) {
+      const existingAction = await this.prisma.remediationAction.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
       });
   
       if (!existingAction) {

@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import api from '../api/api';
+import { downloadCsv } from '../utils/csv';
 
 type VulnerabilityFinding = {
   id: string;
@@ -16,6 +20,10 @@ type VulnerabilityFinding = {
     id: string;
     hostname: string;
   };
+  organization: {
+    id: string;
+    name: string;
+  };
 };
 
 type User = {
@@ -23,6 +31,10 @@ type User = {
   firstName: string;
   lastName: string;
   email: string;
+  organization: {
+    id: string;
+    name: string;
+  };
 };
 
 type RemediationAction = {
@@ -66,6 +78,10 @@ type RemediationAction = {
     lastName: string;
     email: string;
   } | null;
+  organization: {
+    id: string;
+    name: string;
+  };
 };
 
 type RemediationForm = {
@@ -106,7 +122,35 @@ const emptyForm: RemediationForm = {
   assignedUserId: '',
 };
 
+type DeadlineFilter = 'ALL' | 'OVERDUE' | 'DUE_SOON';
+type StatusFilter =
+  | 'ALL'
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+const getDeadlineState = (action: RemediationAction) => {
+  if (
+    !action.dueDate ||
+    action.status === 'COMPLETED' ||
+    action.status === 'CANCELLED'
+  ) {
+    return 'NONE';
+  }
+
+  const dueTime = new Date(action.dueDate).getTime();
+  const now = Date.now();
+  const dueSoonCutoff = now + 3 * 24 * 60 * 60 * 1000;
+
+  if (dueTime < now) return 'OVERDUE';
+  if (dueTime <= dueSoonCutoff) return 'DUE_SOON';
+  return 'UPCOMING';
+};
+
 function RemediationActions() {
+  const [searchParams] = useSearchParams();
+  const highlightedActionId = searchParams.get('actionId') || '';
   const [actions, setActions] = useState<RemediationAction[]>([]);
   const [vulnerabilities, setVulnerabilities] = useState<VulnerabilityFinding[]>(
     [],
@@ -117,6 +161,55 @@ function RemediationActions() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState('');
+  const [deadlineFilter, setDeadlineFilter] =
+    useState<DeadlineFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const eligibleUsers = useMemo(
+    () =>
+      selectedOrganizationId
+        ? users.filter(
+            (user) => user.organization?.id === selectedOrganizationId,
+          )
+        : users,
+    [selectedOrganizationId, users],
+  );
+
+  const filteredActions = useMemo(
+    () => {
+      const query = searchTerm.trim().toLowerCase();
+
+      return actions.filter((action) => {
+        const matchesDeadline =
+          deadlineFilter === 'ALL' ||
+          getDeadlineState(action) === deadlineFilter;
+        const matchesStatus =
+          statusFilter === 'ALL' || action.status === statusFilter;
+        const searchableText = [
+          action.actionTitle,
+          action.vulnerabilityFinding?.cveId,
+          action.vulnerabilityFinding?.title,
+          action.softwareInventory?.softwareName,
+          action.device?.hostname,
+          action.assignedUser?.firstName,
+          action.assignedUser?.lastName,
+          action.assignedUser?.email,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return (
+          matchesDeadline &&
+          matchesStatus &&
+          (!query || searchableText.includes(query))
+        );
+      });
+    },
+    [actions, deadlineFilter, searchTerm, statusFilter],
+  );
 
   const fetchActions = async () => {
     try {
@@ -161,15 +254,30 @@ function RemediationActions() {
     }));
   };
 
-  const resetForm = () => {
+  const handleStatusChange = (status: RemediationForm['status']) => {
+    setForm((previous) => ({
+      ...previous,
+      status,
+      completedAt: status === 'COMPLETED' ? previous.completedAt : '',
+      verificationStatus:
+        status === 'COMPLETED' || previous.verificationStatus !== 'VERIFIED'
+          ? previous.verificationStatus
+          : 'NOT_VERIFIED',
+    }));
+    setError('');
+  };
+
+  const resetForm = (clearFeedback = true) => {
     setForm({
       ...emptyForm,
       vulnerabilityFindingId: vulnerabilities[0]?.id || '',
     });
 
     setEditingId(null);
-    setMessage('');
-    setError('');
+    if (clearFeedback) {
+      setMessage('');
+      setError('');
+    }
   };
 
   const toDateTimeValue = (dateString?: string) => {
@@ -191,7 +299,7 @@ function RemediationActions() {
       setError('');
 
       if (editingId) {
-        await api.patch(`/remediation-actions/${editingId}`, {
+        const response = await api.patch(`/remediation-actions/${editingId}`, {
           actionTitle: form.actionTitle,
           actionDescription: form.actionDescription || undefined,
           recommendedFix: form.recommendedFix || undefined,
@@ -206,7 +314,13 @@ function RemediationActions() {
           assignedUserId: form.assignedUserId || undefined,
         });
 
-        setMessage('Remediation action updated successfully');
+        setMessage(
+          response.data.vulnerabilityResolved
+            ? 'Remediation completed, verified, and vulnerability automatically resolved'
+            : response.data.vulnerabilityInProgress
+              ? 'Remediation and vulnerability are now in progress'
+            : 'Remediation action updated successfully',
+        );
       } else {
         await api.post('/remediation-actions', {
           actionTitle: form.actionTitle,
@@ -224,10 +338,19 @@ function RemediationActions() {
         setMessage('Remediation action created successfully');
       }
 
-      resetForm();
+      resetForm(false);
       fetchActions();
-    } catch {
-      setError('Failed to save remediation action. Please check the details.');
+    } catch (requestError) {
+      const responseMessage = axios.isAxiosError(requestError)
+        ? requestError.response?.data?.message
+        : undefined;
+      const detail = Array.isArray(responseMessage)
+        ? responseMessage.join(', ')
+        : responseMessage;
+
+      setError(
+        detail || 'Failed to save remediation action. Please check the details.',
+      );
     } finally {
       setLoading(false);
     }
@@ -235,6 +358,7 @@ function RemediationActions() {
 
   const handleEdit = (action: RemediationAction) => {
     setEditingId(action.id);
+    setSelectedOrganizationId(action.organization?.id || '');
 
     setForm({
       actionTitle: action.actionTitle || '',
@@ -255,6 +379,21 @@ function RemediationActions() {
     setMessage('');
     setError('');
   };
+
+  useEffect(() => {
+    if (!highlightedActionId || actions.length === 0) return;
+
+    const linkedAction = actions.find(
+      (action) => action.id === highlightedActionId,
+    );
+
+    if (!linkedAction) return;
+
+    handleEdit(linkedAction);
+    document
+      .getElementById('remediation-form')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [actions, highlightedActionId]);
 
   const handleDelete = async (id: string) => {
     const confirmed = window.confirm(
@@ -279,6 +418,40 @@ function RemediationActions() {
     }
   };
 
+  const exportActions = () => {
+    downloadCsv(
+      `remediation-actions-${new Date().toISOString().slice(0, 10)}.csv`,
+      [
+        [
+          'Action',
+          'CVE',
+          'Software',
+          'Device',
+          'Assigned User',
+          'Status',
+          'Verification',
+          'Due Date',
+          'Deadline State',
+          'Recommended Fix',
+        ],
+        ...filteredActions.map((action) => [
+          action.actionTitle,
+          action.vulnerabilityFinding?.cveId || '',
+          action.softwareInventory?.softwareName || '',
+          action.device?.hostname || '',
+          action.assignedUser
+            ? `${action.assignedUser.firstName} ${action.assignedUser.lastName}`
+            : '',
+          action.status,
+          action.verificationStatus,
+          action.dueDate || '',
+          getDeadlineState(action),
+          action.recommendedFix || '',
+        ]),
+      ],
+    );
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -289,7 +462,10 @@ function RemediationActions() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div
+          id="remediation-form"
+          className="xl:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-6 scroll-mt-6"
+        >
           <h2 className="text-lg font-bold mb-4">
             {editingId ? 'Update Remediation' : 'Create Remediation'}
           </h2>
@@ -399,7 +575,11 @@ function RemediationActions() {
               <select
                 className="w-full rounded-lg bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-cyan-500"
                 value={form.status}
-                onChange={(event) => handleChange('status', event.target.value)}
+                onChange={(event) =>
+                  handleStatusChange(
+                    event.target.value as RemediationForm['status'],
+                  )
+                }
               >
                 <option value="PENDING">PENDING</option>
                 <option value="IN_PROGRESS">IN_PROGRESS</option>
@@ -420,7 +600,9 @@ function RemediationActions() {
                 }
               >
                 <option value="NOT_VERIFIED">NOT_VERIFIED</option>
-                <option value="VERIFIED">VERIFIED</option>
+                <option value="VERIFIED" disabled={form.status !== 'COMPLETED'}>
+                  VERIFIED (completed only)
+                </option>
                 <option value="FAILED">FAILED</option>
               </select>
             </div>
@@ -437,7 +619,7 @@ function RemediationActions() {
                 }
               >
                 <option value="">Not assigned</option>
-                {users.map((user) => (
+                {eligibleUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.firstName} {user.lastName} - {user.email}
                   </option>
@@ -479,7 +661,8 @@ function RemediationActions() {
                   </label>
                   <input
                     type="datetime-local"
-                    className="w-full rounded-lg bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-cyan-500"
+                    disabled={form.status !== 'COMPLETED'}
+                    className="w-full rounded-lg bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-40"
                     value={form.completedAt}
                     onChange={(event) =>
                       handleChange('completedAt', event.target.value)
@@ -541,7 +724,7 @@ function RemediationActions() {
               {editingId && (
                 <button
                   type="button"
-                  onClick={resetForm}
+                  onClick={() => resetForm()}
                   className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-lg transition"
                 >
                   Cancel
@@ -552,15 +735,87 @@ function RemediationActions() {
         </div>
 
         <div className="xl:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h2 className="text-lg font-bold">Remediation List</h2>
-            <button
-              onClick={fetchActions}
-              className="bg-slate-800 hover:bg-slate-700 text-sm px-4 py-2 rounded-lg"
-            >
-              Refresh
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {(['ALL', 'OVERDUE', 'DUE_SOON'] as DeadlineFilter[]).map(
+                (filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setDeadlineFilter(filter)}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                      deadlineFilter === filter
+                        ? 'bg-cyan-500 text-slate-950'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {filter === 'ALL'
+                      ? 'All'
+                      : filter === 'OVERDUE'
+                        ? 'Overdue'
+                        : 'Due Soon'}
+                  </button>
+                ),
+              )}
+              <button
+                type="button"
+                onClick={exportActions}
+                disabled={filteredActions.length === 0}
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-800 bg-cyan-950 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-900 disabled:opacity-50"
+              >
+                <Download size={14} /> Export CSV
+              </button>
+              <button
+                onClick={fetchActions}
+                className="bg-slate-800 hover:bg-slate-700 text-sm px-4 py-2 rounded-lg"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
+
+          <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_180px]">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search CVE, action, software, device, or user..."
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-500"
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as StatusFilter)
+              }
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+            >
+              <option value="ALL">All statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="IN_PROGRESS">In progress</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+
+          {(searchTerm || statusFilter !== 'ALL' || deadlineFilter !== 'ALL') && (
+            <div className="mb-4 flex items-center justify-between gap-3 text-xs text-slate-400">
+              <span>
+                Showing {filteredActions.length} of {actions.length} actions
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('ALL');
+                  setDeadlineFilter('ALL');
+                }}
+                className="font-semibold text-cyan-400 hover:text-cyan-300"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
 
           {loading && <p className="text-slate-400">Loading...</p>}
 
@@ -575,15 +830,21 @@ function RemediationActions() {
                   <th className="py-3 pr-4">Assigned</th>
                   <th className="py-3 pr-4">Status</th>
                   <th className="py-3 pr-4">Verify</th>
+                  <th className="py-3 pr-4">Due</th>
                   <th className="py-3 pr-4">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
-                {actions.map((action) => (
+                {filteredActions.map((action) => (
                   <tr
                     key={action.id}
-                    className="border-b border-slate-800 text-slate-200"
+                    id={`remediation-${action.id}`}
+                    className={`border-b text-slate-200 transition ${
+                      action.id === highlightedActionId
+                        ? 'border-cyan-500 bg-cyan-950/40 ring-1 ring-inset ring-cyan-500/50'
+                        : 'border-slate-800'
+                    }`}
                   >
                     <td className="py-4 pr-4 font-medium">
                       {action.actionTitle}
@@ -620,6 +881,27 @@ function RemediationActions() {
                     <td className="py-4 pr-4">
                       {action.verificationStatus}
                     </td>
+                    <td className="py-4 pr-4 whitespace-nowrap">
+                      {action.dueDate ? (
+                        <div>
+                          <p className="text-xs text-slate-300">
+                            {new Date(action.dueDate).toLocaleDateString()}
+                          </p>
+                          {getDeadlineState(action) === 'OVERDUE' && (
+                            <span className="mt-1 inline-block rounded-full border border-red-800 bg-red-950 px-2 py-0.5 text-[10px] font-bold text-red-300">
+                              OVERDUE
+                            </span>
+                          )}
+                          {getDeadlineState(action) === 'DUE_SOON' && (
+                            <span className="mt-1 inline-block rounded-full border border-amber-800 bg-amber-950 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                              DUE SOON
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className="py-4 pr-4">
                       <div className="flex gap-2">
                         <button
@@ -640,13 +922,13 @@ function RemediationActions() {
                   </tr>
                 ))}
 
-                {actions.length === 0 && !loading && (
+                {filteredActions.length === 0 && !loading && (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="py-8 text-center text-slate-400"
                     >
-                      No remediation actions found.
+                      No remediation actions match this filter.
                     </td>
                   </tr>
                 )}

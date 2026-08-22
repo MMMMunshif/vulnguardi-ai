@@ -3,6 +3,7 @@ import {
   DeviceStatus,
   OrganizationStatus,
   RemediationStatus,
+  RemediationVerificationStatus,
   SoftwareStatus,
   SoftwareUpdateStatus,
   UserStatus,
@@ -14,7 +15,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getSummary() {
+  async getSummary(organizationId?: string) {
+    const now = new Date();
+    const dueSoonCutoff = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const organizationWhere = organizationId ? { id: organizationId } : {};
+    const scopedWhere = organizationId ? { organizationId } : {};
     const [
       totalOrganizations,
       activeOrganizations,
@@ -46,70 +51,122 @@ export class DashboardService {
       inProgressRemediations,
       completedRemediations,
       cancelledRemediations,
+      verifiedRemediations,
+      unverifiedRemediations,
+      failedVerificationRemediations,
+      remediatedVulnerabilities,
+      overdueRemediations,
+      dueSoonRemediations,
     ] = await Promise.all([
-      this.prisma.organization.count(),
+      this.prisma.organization.count({ where: organizationWhere }),
       this.prisma.organization.count({
-        where: { status: OrganizationStatus.ACTIVE },
+        where: { ...organizationWhere, status: OrganizationStatus.ACTIVE },
       }),
       this.prisma.organization.count({
-        where: { status: OrganizationStatus.SUSPENDED },
+        where: { ...organizationWhere, status: OrganizationStatus.SUSPENDED },
       }),
 
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: scopedWhere }),
       this.prisma.user.count({
-        where: { status: UserStatus.ACTIVE },
+        where: { ...scopedWhere, status: UserStatus.ACTIVE },
       }),
       this.prisma.user.count({
-        where: { status: UserStatus.INACTIVE },
+        where: { ...scopedWhere, status: UserStatus.INACTIVE },
       }),
 
-      this.prisma.device.count(),
+      this.prisma.device.count({ where: scopedWhere }),
       this.prisma.device.count({
-        where: { status: DeviceStatus.ACTIVE },
+        where: { ...scopedWhere, status: DeviceStatus.ACTIVE },
       }),
       this.prisma.device.count({
-        where: { status: DeviceStatus.RETIRED },
+        where: { ...scopedWhere, status: DeviceStatus.RETIRED },
       }),
 
-      this.prisma.softwareInventory.count(),
+      this.prisma.softwareInventory.count({ where: scopedWhere }),
       this.prisma.softwareInventory.count({
-        where: { status: SoftwareStatus.INSTALLED },
+        where: { ...scopedWhere, status: SoftwareStatus.INSTALLED },
       }),
       this.prisma.softwareInventory.count({
-        where: { status: SoftwareStatus.REMOVED },
+        where: { ...scopedWhere, status: SoftwareStatus.REMOVED },
       }),
 
-      this.prisma.softwareUpdateFinding.count(),
+      this.prisma.softwareUpdateFinding.count({ where: scopedWhere }),
       this.prisma.softwareUpdateFinding.count({
-        where: { status: SoftwareUpdateStatus.OUTDATED },
+        where: { ...scopedWhere, status: SoftwareUpdateStatus.OUTDATED },
       }),
       this.prisma.softwareUpdateFinding.count({
-        where: { status: SoftwareUpdateStatus.UP_TO_DATE },
+        where: { ...scopedWhere, status: SoftwareUpdateStatus.UP_TO_DATE },
       }),
 
-      this.prisma.vulnerabilityFinding.count(),
+      this.prisma.vulnerabilityFinding.count({ where: scopedWhere }),
       this.prisma.vulnerabilityFinding.count({
-        where: { status: VulnerabilityStatus.OPEN },
+        where: { ...scopedWhere, status: VulnerabilityStatus.OPEN },
       }),
       this.prisma.vulnerabilityFinding.count({
-        where: { status: VulnerabilityStatus.IN_PROGRESS },
+        where: { ...scopedWhere, status: VulnerabilityStatus.IN_PROGRESS },
       }),
       this.prisma.vulnerabilityFinding.count({
-        where: { status: VulnerabilityStatus.RESOLVED },
+        where: { ...scopedWhere, status: VulnerabilityStatus.RESOLVED },
       }),
 
-      this.prisma.remediationAction.count(),
+      this.prisma.remediationAction.count({ where: scopedWhere }),
       this.prisma.remediationAction.count({
-        where: { status: RemediationStatus.PENDING },
+        where: { ...scopedWhere, status: RemediationStatus.PENDING },
       }),
       this.prisma.remediationAction.count({
-        where: { status: RemediationStatus.IN_PROGRESS },
+        where: { ...scopedWhere, status: RemediationStatus.IN_PROGRESS },
       }),
       this.prisma.remediationAction.count({
-        where: { status: RemediationStatus.COMPLETED },
+        where: { ...scopedWhere, status: RemediationStatus.COMPLETED },
       }),
       this.prisma.remediationAction.count({
-        where: { status: RemediationStatus.CANCELLED },
+        where: { ...scopedWhere, status: RemediationStatus.CANCELLED },
+      }),
+      this.prisma.remediationAction.count({
+        where: {
+          ...scopedWhere,
+          verificationStatus: RemediationVerificationStatus.VERIFIED,
+        },
+      }),
+      this.prisma.remediationAction.count({
+        where: {
+          ...scopedWhere,
+          verificationStatus: RemediationVerificationStatus.NOT_VERIFIED,
+        },
+      }),
+      this.prisma.remediationAction.count({
+        where: {
+          ...scopedWhere,
+          verificationStatus: RemediationVerificationStatus.FAILED,
+        },
+      }),
+      this.prisma.remediationAction.findMany({
+        where: scopedWhere,
+        distinct: ['vulnerabilityFindingId'],
+        select: {
+          vulnerabilityFindingId: true,
+        },
+      }),
+      this.prisma.remediationAction.count({
+        where: {
+          ...scopedWhere,
+          status: {
+            in: [RemediationStatus.PENDING, RemediationStatus.IN_PROGRESS],
+          },
+          dueDate: { lt: now },
+        },
+      }),
+      this.prisma.remediationAction.count({
+        where: {
+          ...scopedWhere,
+          status: {
+            in: [RemediationStatus.PENDING, RemediationStatus.IN_PROGRESS],
+          },
+          dueDate: {
+            gte: now,
+            lte: dueSoonCutoff,
+          },
+        },
       }),
     ]);
 
@@ -153,19 +210,30 @@ export class DashboardService {
           inProgress: inProgressRemediations,
           completed: completedRemediations,
           cancelled: cancelledRemediations,
+          verified: verifiedRemediations,
+          notVerified: unverifiedRemediations,
+          verificationFailed: failedVerificationRemediations,
+          coveredVulnerabilities: remediatedVulnerabilities.length,
+          overdue: overdueRemediations,
+          dueSoon: dueSoonRemediations,
         },
       },
     };
   }
 
-  async getRecentActivity() {
+  async getRecentActivity(organizationId?: string) {
+    const now = new Date();
+    const dueSoonCutoff = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const scopedWhere = organizationId ? { organizationId } : {};
     const [
       recentDevices,
       recentSoftware,
       recentVulnerabilities,
       recentRemediations,
+      deadlineRemediations,
     ] = await Promise.all([
       this.prisma.device.findMany({
+        where: scopedWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -184,6 +252,7 @@ export class DashboardService {
       }),
 
       this.prisma.softwareInventory.findMany({
+        where: scopedWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -202,6 +271,7 @@ export class DashboardService {
       }),
 
       this.prisma.vulnerabilityFinding.findMany({
+        where: scopedWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -221,6 +291,7 @@ export class DashboardService {
       }),
 
       this.prisma.remediationAction.findMany({
+        where: scopedWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -240,6 +311,42 @@ export class DashboardService {
           },
         },
       }),
+      this.prisma.remediationAction.findMany({
+        take: 5,
+        where: {
+          ...scopedWhere,
+          status: {
+            in: [RemediationStatus.PENDING, RemediationStatus.IN_PROGRESS],
+          },
+          dueDate: {
+            lte: dueSoonCutoff,
+          },
+        },
+        orderBy: {
+          dueDate: 'asc',
+        },
+        select: {
+          id: true,
+          actionTitle: true,
+          status: true,
+          dueDate: true,
+          assignedUser: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          vulnerabilityFinding: {
+            select: {
+              id: true,
+              cveId: true,
+              title: true,
+            },
+          },
+        },
+      }),
     ]);
 
     return {
@@ -249,6 +356,11 @@ export class DashboardService {
         recentSoftware,
         recentVulnerabilities,
         recentRemediations,
+        deadlineRemediations: deadlineRemediations.map((action) => ({
+          ...action,
+          deadlineState:
+            action.dueDate && action.dueDate < now ? 'OVERDUE' : 'DUE_SOON',
+        })),
       },
     };
   }

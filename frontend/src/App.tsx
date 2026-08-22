@@ -2,7 +2,6 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import MainLayout from './layouts/MainLayout';
-import ComingSoon from './pages/ComingSoon';
 import Organizations from './pages/Organizations';
 import Departments from './pages/Departments';
 import Users from './pages/Users';

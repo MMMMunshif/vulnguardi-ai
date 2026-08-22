@@ -69,15 +69,32 @@ export class AiRecommendationsService {
       softwareName,
       fixedVersion,
     );
+    const slaHours = this.getSlaHours(priority);
+    const suggestedDueDate = new Date(
+      Date.now() + slaHours * 60 * 60 * 1000,
+    ).toISOString();
 
     return {
       priority,
+      slaHours,
+      suggestedDueDate,
       actionType,
       recommendedFix,
       explanation: explanationParts.join(' '),
       remediationSteps,
       generatedBy: 'VulnGuard AI Smart Recommendation Engine',
     };
+  }
+
+  private getSlaHours(priority: string) {
+    const slaByPriority: Record<string, number> = {
+      Critical: 24,
+      High: 72,
+      Medium: 168,
+      Low: 336,
+    };
+
+    return slaByPriority[priority] ?? 168;
   }
 
   private buildRemediationSteps(

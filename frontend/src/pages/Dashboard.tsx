@@ -23,6 +23,18 @@ type Summary = {
   softwareUpdates?: number;
   vulnerabilities?: number;
   remediationActions?: number;
+  remediationProgress?: {
+    pending: number;
+    inProgress: number;
+    completed: number;
+    cancelled: number;
+    verified: number;
+    notVerified: number;
+    verificationFailed: number;
+    coveredVulnerabilities: number;
+    overdue: number;
+    dueSoon: number;
+  };
 };
 
 type DeviceActivity = {
@@ -66,6 +78,23 @@ type RemediationActivity = {
   createdAt?: string;
 };
 
+type DeadlineRemediation = {
+  id: string;
+  actionTitle: string;
+  status: string;
+  dueDate: string;
+  deadlineState: 'OVERDUE' | 'DUE_SOON';
+  assignedUser?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  vulnerabilityFinding?: {
+    cveId?: string;
+    title: string;
+  };
+};
+
 type RecentActivity = {
   recentDevices?: DeviceActivity[];
   recentSoftware?: SoftwareActivity[];
@@ -73,6 +102,7 @@ type RecentActivity = {
   recentVulnerabilities?: VulnerabilityActivity[];
   recentRemediations?: RemediationActivity[];
   recentRemediationActions?: RemediationActivity[];
+  deadlineRemediations?: DeadlineRemediation[];
 };
 
 // ---- helpers -------------------------------------------------------------
@@ -253,6 +283,23 @@ function Dashboard() {
             'totalRemediationActions',
             'remediationActionCount',
           ]),
+
+          remediationProgress: {
+            pending: extractNumber(data?.remediationActions?.pending),
+            inProgress: extractNumber(data?.remediationActions?.inProgress),
+            completed: extractNumber(data?.remediationActions?.completed),
+            cancelled: extractNumber(data?.remediationActions?.cancelled),
+            verified: extractNumber(data?.remediationActions?.verified),
+            notVerified: extractNumber(data?.remediationActions?.notVerified),
+            verificationFailed: extractNumber(
+              data?.remediationActions?.verificationFailed,
+            ),
+            coveredVulnerabilities: extractNumber(
+              data?.remediationActions?.coveredVulnerabilities,
+            ),
+            overdue: extractNumber(data?.remediationActions?.overdue),
+            dueSoon: extractNumber(data?.remediationActions?.dueSoon),
+          },
         });
   
       const recentData =
@@ -343,7 +390,23 @@ function Dashboard() {
   const totalAssets = (summary.devices ?? 0) + (summary.softwareInventory ?? 0);
   const securityWorkload = (summary.vulnerabilities ?? 0) + (summary.remediationActions ?? 0);
   const openVulnRatio = summary.vulnerabilities
-    ? Math.round(((summary.remediationActions ?? 0) / (summary.vulnerabilities || 1)) * 100)
+    ? Math.round(
+        ((summary.remediationProgress?.coveredVulnerabilities ?? 0) /
+          (summary.vulnerabilities || 1)) *
+          100,
+      )
+    : 0;
+  const remediationProgress = summary.remediationProgress;
+  const remediationTotal = summary.remediationActions ?? 0;
+  const remediationCompletionRate = remediationTotal
+    ? Math.round(
+        ((remediationProgress?.completed ?? 0) / remediationTotal) * 100,
+      )
+    : 0;
+  const remediationVerificationRate = remediationTotal
+    ? Math.round(
+        ((remediationProgress?.verified ?? 0) / remediationTotal) * 100,
+      )
     : 0;
 
   return (
@@ -385,6 +448,66 @@ function Dashboard() {
           <AlertTriangle className="h-4 w-4 flex-shrink-0" />
           {error}
         </div>
+      )}
+
+      {(recentActivity.deadlineRemediations || []).length > 0 && (
+        <section className="mb-6 overflow-hidden rounded-xl border border-amber-700/50 bg-amber-950/20">
+          <div className="flex items-center gap-3 border-b border-amber-800/40 px-5 py-4">
+            <div className="rounded-lg bg-amber-500/10 p-2 ring-1 ring-amber-500/20">
+              <AlertTriangle className="h-5 w-5 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-amber-100">
+                Remediation Deadline Alerts
+              </h2>
+              <p className="text-xs text-amber-300/60">
+                Urgent tasks that are overdue or due within three days.
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-800/80">
+            {(recentActivity.deadlineRemediations || []).map((action) => (
+              <div
+                key={action.id}
+                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                        action.deadlineState === 'OVERDUE'
+                          ? 'border-red-800 bg-red-950 text-red-300'
+                          : 'border-amber-800 bg-amber-950 text-amber-300'
+                      }`}
+                    >
+                      {action.deadlineState.replace('_', ' ')}
+                    </span>
+                    <p className="truncate text-sm font-semibold text-slate-200">
+                      {action.actionTitle}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {action.vulnerabilityFinding?.cveId || 'No CVE'} · Due{' '}
+                    {new Date(action.dueDate).toLocaleString()} ·{' '}
+                    {action.assignedUser
+                      ? `${action.assignedUser.firstName} ${action.assignedUser.lastName}`
+                      : 'Unassigned'}
+                  </p>
+                </div>
+
+                <a
+                  href={`/remediation-actions?actionId=${encodeURIComponent(
+                    action.id,
+                  )}`}
+                  className="shrink-0 rounded-lg border border-cyan-700 bg-cyan-950 px-3 py-2 text-center text-xs font-semibold text-cyan-300 transition hover:bg-cyan-900"
+                >
+                  View Task
+                </a>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Stat cards */}
@@ -457,7 +580,7 @@ function Dashboard() {
                 />
               </div>
               <p className="text-[11px] text-slate-500 mt-1.5">
-                {openVulnRatio}% of vulnerabilities have a remediation action in flight
+                {openVulnRatio}% of vulnerabilities have at least one remediation action
               </p>
             </div>
           ) : null}
@@ -478,6 +601,85 @@ function Dashboard() {
           <p className="text-slate-400 text-sm mt-2 leading-relaxed">
             Organization → Device → Software → Vulnerability → Remediation flow is connected.
           </p>
+        </div>
+      </div>
+
+      {/* Remediation progress */}
+      <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-6">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-200">
+              Remediation Progress
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Task completion and security verification overview.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <span className="rounded-full border border-emerald-800/60 bg-emerald-950/60 px-3 py-1 text-xs font-semibold text-emerald-300">
+              {remediationCompletionRate}% completed
+            </span>
+            <span className="rounded-full border border-cyan-800/60 bg-cyan-950/60 px-3 py-1 text-xs font-semibold text-cyan-300">
+              {remediationVerificationRate}% verified
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            {
+              label: 'Pending',
+              value: remediationProgress?.pending ?? 0,
+              color: 'text-slate-300',
+            },
+            {
+              label: 'In Progress',
+              value: remediationProgress?.inProgress ?? 0,
+              color: 'text-amber-300',
+            },
+            {
+              label: 'Completed',
+              value: remediationProgress?.completed ?? 0,
+              color: 'text-emerald-300',
+            },
+            {
+              label: 'Verified',
+              value: remediationProgress?.verified ?? 0,
+              color: 'text-cyan-300',
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-lg border border-slate-800 bg-slate-950 p-4"
+            >
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                {item.label}
+              </p>
+              <p className={`mt-2 text-2xl font-bold ${item.color}`}>
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {(remediationProgress?.verificationFailed ?? 0) > 0 && (
+          <p className="mt-4 rounded-lg border border-red-800/60 bg-red-950/50 p-3 text-sm text-red-300">
+            {remediationProgress?.verificationFailed} remediation verification
+            attempt(s) failed and require review.
+          </p>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          {(remediationProgress?.overdue ?? 0) > 0 && (
+            <p className="rounded-lg border border-red-800/60 bg-red-950/50 px-3 py-2 text-sm font-medium text-red-300">
+              {remediationProgress?.overdue} overdue remediation action(s)
+            </p>
+          )}
+          {(remediationProgress?.dueSoon ?? 0) > 0 && (
+            <p className="rounded-lg border border-amber-800/60 bg-amber-950/50 px-3 py-2 text-sm font-medium text-amber-300">
+              {remediationProgress?.dueSoon} action(s) due within 3 days
+            </p>
+          )}
         </div>
       </div>
 
