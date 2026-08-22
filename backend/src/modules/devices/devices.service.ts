@@ -39,8 +39,9 @@ import {
       },
     };
   
-    async findAll() {
+    async findAll(organizationId?: string) {
       const devices = await this.prisma.device.findMany({
+        where: organizationId ? { organizationId } : undefined,
         orderBy: {
           createdAt: 'desc',
         },
@@ -53,11 +54,9 @@ import {
       };
     }
   
-    async findOne(id: string) {
-      const device = await this.prisma.device.findUnique({
-        where: {
-          id,
-        },
+    async findOne(id: string, organizationId?: string) {
+      const device = await this.prisma.device.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
         select: this.deviceSelect,
       });
   
@@ -71,7 +70,11 @@ import {
       };
     }
   
-    async create(createDeviceDto: CreateDeviceDto) {
+    async create(createDeviceDto: CreateDeviceDto, organizationId?: string) {
+      if (organizationId && createDeviceDto.organizationId !== organizationId) {
+        throw new NotFoundException('Organization not found');
+      }
+
       const organization = await this.prisma.organization.findUnique({
         where: {
           id: createDeviceDto.organizationId,
@@ -121,15 +124,21 @@ import {
       };
     }
   
-    async update(id: string, updateDeviceDto: UpdateDeviceDto) {
-      const device = await this.prisma.device.findUnique({
-        where: {
-          id,
-        },
+    async update(id: string, updateDeviceDto: UpdateDeviceDto, scopedOrganizationId?: string) {
+      const device = await this.prisma.device.findFirst({
+        where: { id, ...(scopedOrganizationId ? { organizationId: scopedOrganizationId } : {}) },
       });
   
       if (!device) {
         throw new NotFoundException('Device not found');
+      }
+
+      if (
+        scopedOrganizationId &&
+        updateDeviceDto.organizationId &&
+        updateDeviceDto.organizationId !== scopedOrganizationId
+      ) {
+        throw new NotFoundException('Organization not found');
       }
   
       const organizationId = updateDeviceDto.organizationId || device.organizationId;
@@ -193,11 +202,9 @@ import {
       };
     }
   
-    async retire(id: string) {
-      const device = await this.prisma.device.findUnique({
-        where: {
-          id,
-        },
+    async retire(id: string, organizationId?: string) {
+      const device = await this.prisma.device.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
       });
   
       if (!device) {

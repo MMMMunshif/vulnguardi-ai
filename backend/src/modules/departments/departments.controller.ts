@@ -6,8 +6,10 @@ import {
     Param,
     Patch,
     Post,
+    Req,
     UseGuards,
   } from '@nestjs/common';
+  import { Request } from 'express';
   import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
   import { Roles } from '../auth/decorators/roles.decorator';
   import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -15,6 +17,10 @@ import {
   import { CreateDepartmentDto } from './dto/create-department.dto';
   import { UpdateDepartmentDto } from './dto/update-department.dto';
   import { DepartmentsService } from './departments.service';
+
+  type AuthenticatedRequest = Request & {
+    user: { role: string; organizationId: string };
+  };
   
   @ApiTags('Departments')
   @ApiBearerAuth()
@@ -24,35 +30,40 @@ import {
     constructor(private readonly departmentsService: DepartmentsService) {}
   
     @Get()
-    @Roles('Super Admin')
-    findAll() {
-      return this.departmentsService.findAll();
+    @Roles('Super Admin', 'Organization Admin')
+    findAll(@Req() request: AuthenticatedRequest) {
+      return this.departmentsService.findAll(this.scope(request));
     }
   
     @Get(':id')
-    @Roles('Super Admin')
-    findOne(@Param('id') id: string) {
-      return this.departmentsService.findOne(id);
+    @Roles('Super Admin', 'Organization Admin')
+    findOne(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+      return this.departmentsService.findOne(id, this.scope(request));
     }
   
     @Post()
-    @Roles('Super Admin')
-    create(@Body() createDepartmentDto: CreateDepartmentDto) {
-      return this.departmentsService.create(createDepartmentDto);
+    @Roles('Super Admin', 'Organization Admin')
+    create(@Body() createDepartmentDto: CreateDepartmentDto, @Req() request: AuthenticatedRequest) {
+      return this.departmentsService.create(createDepartmentDto, this.scope(request));
     }
   
     @Patch(':id')
-    @Roles('Super Admin')
+    @Roles('Super Admin', 'Organization Admin')
     update(
       @Param('id') id: string,
       @Body() updateDepartmentDto: UpdateDepartmentDto,
+      @Req() request: AuthenticatedRequest,
     ) {
-      return this.departmentsService.update(id, updateDepartmentDto);
+      return this.departmentsService.update(id, updateDepartmentDto, this.scope(request));
     }
   
     @Delete(':id')
-    @Roles('Super Admin')
-    remove(@Param('id') id: string) {
-      return this.departmentsService.remove(id);
+    @Roles('Super Admin', 'Organization Admin')
+    remove(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+      return this.departmentsService.remove(id, this.scope(request));
+    }
+
+    private scope(request: AuthenticatedRequest) {
+      return request.user.role === 'Super Admin' ? undefined : request.user.organizationId;
     }
   }

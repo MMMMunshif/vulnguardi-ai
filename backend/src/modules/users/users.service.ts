@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -63,8 +64,9 @@ export class UsersService {
     };
   }
 
-  async findAll() {
+  async findAll(organizationId?: string) {
     const users = await this.prisma.user.findMany({
+      where: organizationId ? { organizationId } : undefined,
       orderBy: {
         createdAt: 'desc',
       },
@@ -77,11 +79,9 @@ export class UsersService {
     };
   }
 
-  async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id,
-      },
+  async findOne(id: string, organizationId?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...(organizationId ? { organizationId } : {}) },
       select: this.userSelect,
     });
 
@@ -95,7 +95,17 @@ export class UsersService {
     };
   }
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto, organizationId?: string) {
+    if (organizationId && createUserDto.organizationId !== organizationId) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    if (organizationId && createUserDto.roleName === 'Super Admin') {
+      throw new ForbiddenException(
+        'Organization administrators cannot create Super Admin users',
+      );
+    }
+
     const existingUser = await this.prisma.user.findUnique({
       where: {
         email: createUserDto.email,
@@ -161,15 +171,27 @@ export class UsersService {
     };
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id,
-      },
+  async update(id: string, updateUserDto: UpdateUserDto, scopedOrganizationId?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...(scopedOrganizationId ? { organizationId: scopedOrganizationId } : {}) },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (
+      scopedOrganizationId &&
+      updateUserDto.organizationId &&
+      updateUserDto.organizationId !== scopedOrganizationId
+    ) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    if (scopedOrganizationId && updateUserDto.roleName === 'Super Admin') {
+      throw new ForbiddenException(
+        'Organization administrators cannot assign the Super Admin role',
+      );
     }
 
     if (updateUserDto.email) {
@@ -266,11 +288,9 @@ export class UsersService {
     };
   }
 
-  async deactivate(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id,
-      },
+  async deactivate(id: string, organizationId?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, ...(organizationId ? { organizationId } : {}) },
     });
 
     if (!user) {

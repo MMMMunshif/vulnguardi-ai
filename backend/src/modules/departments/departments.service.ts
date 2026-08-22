@@ -11,8 +11,9 @@ import {
   export class DepartmentsService {
     constructor(private readonly prisma: PrismaService) {}
   
-    async findAll() {
+    async findAll(organizationId?: string) {
       const departments = await this.prisma.department.findMany({
+        where: organizationId ? { organizationId } : undefined,
         orderBy: {
           createdAt: 'desc',
         },
@@ -42,9 +43,9 @@ import {
       };
     }
   
-    async findOne(id: string) {
-      const department = await this.prisma.department.findUnique({
-        where: { id },
+    async findOne(id: string, organizationId?: string) {
+      const department = await this.prisma.department.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
         select: {
           id: true,
           name: true,
@@ -79,7 +80,11 @@ import {
       };
     }
   
-    async create(createDepartmentDto: CreateDepartmentDto) {
+    async create(createDepartmentDto: CreateDepartmentDto, organizationId?: string) {
+      if (organizationId && createDepartmentDto.organizationId !== organizationId) {
+        throw new NotFoundException('Organization not found');
+      }
+
       const organization = await this.prisma.organization.findUnique({
         where: {
           id: createDepartmentDto.organizationId,
@@ -125,9 +130,9 @@ import {
       };
     }
   
-    async update(id: string, updateDepartmentDto: UpdateDepartmentDto) {
-      const department = await this.prisma.department.findUnique({
-        where: { id },
+    async update(id: string, updateDepartmentDto: UpdateDepartmentDto, organizationId?: string) {
+      const department = await this.prisma.department.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
       });
   
       if (!department) {
@@ -175,9 +180,9 @@ import {
       };
     }
   
-    async remove(id: string) {
-      const department = await this.prisma.department.findUnique({
-        where: { id },
+    async remove(id: string, organizationId?: string) {
+      const department = await this.prisma.department.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
         include: {
           users: true,
         },

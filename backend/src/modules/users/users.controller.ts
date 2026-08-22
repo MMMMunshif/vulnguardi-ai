@@ -50,31 +50,37 @@ export class UsersController {
 
   @Get()
   @Roles('Super Admin', 'Organization Admin')
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Req() req: AuthenticatedRequest) {
+    return this.usersService.findAll(this.scope(req));
   }
 
   @Get(':id')
   @Roles('Super Admin', 'Organization Admin')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.usersService.findOne(id, this.scope(req));
   }
 
   @Post()
   @Roles('Super Admin', 'Organization Admin')
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(@Body() createUserDto: CreateUserDto, @Req() req: AuthenticatedRequest) {
+    return this.usersService.create(createUserDto, this.scope(req));
   }
 
   @Patch(':id')
   @Roles('Super Admin', 'Organization Admin')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Req() req: AuthenticatedRequest) {
+    return this.usersService.update(id, updateUserDto, this.scope(req));
   }
 
   @Delete(':id')
   @Roles('Super Admin', 'Organization Admin')
-  deactivate(@Param('id') id: string) {
-    return this.usersService.deactivate(id);
+  deactivate(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.usersService.deactivate(id, this.scope(req));
+  }
+
+  private scope(request: AuthenticatedRequest) {
+    return request.user.role === 'Super Admin'
+      ? undefined
+      : request.user.organizationId;
   }
 }

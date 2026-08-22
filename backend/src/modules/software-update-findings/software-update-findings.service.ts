@@ -81,8 +81,9 @@ export class SoftwareUpdateFindingsService {
     return installedVersion !== latestVersion;
   }
 
-  async findAll() {
+  async findAll(organizationId?: string) {
     const findings = await this.prisma.softwareUpdateFinding.findMany({
+      where: organizationId ? { organizationId } : undefined,
       orderBy: {
         createdAt: 'desc',
       },
@@ -95,11 +96,9 @@ export class SoftwareUpdateFindingsService {
     };
   }
 
-  async findOne(id: string) {
-    const finding = await this.prisma.softwareUpdateFinding.findUnique({
-      where: {
-        id,
-      },
+  async findOne(id: string, organizationId?: string) {
+    const finding = await this.prisma.softwareUpdateFinding.findFirst({
+      where: { id, ...(organizationId ? { organizationId } : {}) },
       select: this.updateFindingSelect,
     });
 
@@ -113,10 +112,11 @@ export class SoftwareUpdateFindingsService {
     };
   }
 
-  async create(createDto: CreateSoftwareUpdateFindingDto) {
-    const softwareInventory = await this.prisma.softwareInventory.findUnique({
+  async create(createDto: CreateSoftwareUpdateFindingDto, organizationId?: string) {
+    const softwareInventory = await this.prisma.softwareInventory.findFirst({
       where: {
         id: createDto.softwareInventoryId,
+        ...(organizationId ? { organizationId } : {}),
       },
     });
 
@@ -160,11 +160,9 @@ export class SoftwareUpdateFindingsService {
     };
   }
 
-  async update(id: string, updateDto: UpdateSoftwareUpdateFindingDto) {
-    const finding = await this.prisma.softwareUpdateFinding.findUnique({
-      where: {
-        id,
-      },
+  async update(id: string, updateDto: UpdateSoftwareUpdateFindingDto, organizationId?: string) {
+    const finding = await this.prisma.softwareUpdateFinding.findFirst({
+      where: { id, ...(organizationId ? { organizationId } : {}) },
     });
 
     if (!finding) {
@@ -208,11 +206,9 @@ export class SoftwareUpdateFindingsService {
     };
   }
 
-  async remove(id: string) {
-    const finding = await this.prisma.softwareUpdateFinding.findUnique({
-      where: {
-        id,
-      },
+  async remove(id: string, organizationId?: string) {
+    const finding = await this.prisma.softwareUpdateFinding.findFirst({
+      where: { id, ...(organizationId ? { organizationId } : {}) },
     });
 
     if (!finding) {

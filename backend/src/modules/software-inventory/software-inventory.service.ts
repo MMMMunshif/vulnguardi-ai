@@ -41,8 +41,9 @@ import {
       },
     };
   
-    async findAll() {
+    async findAll(organizationId?: string) {
       const softwareInventory = await this.prisma.softwareInventory.findMany({
+        where: organizationId ? { organizationId } : undefined,
         orderBy: {
           createdAt: 'desc',
         },
@@ -55,11 +56,9 @@ import {
       };
     }
   
-    async findOne(id: string) {
-      const software = await this.prisma.softwareInventory.findUnique({
-        where: {
-          id,
-        },
+    async findOne(id: string, organizationId?: string) {
+      const software = await this.prisma.softwareInventory.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
         select: this.softwareSelect,
       });
   
@@ -73,7 +72,14 @@ import {
       };
     }
   
-    async create(createSoftwareInventoryDto: CreateSoftwareInventoryDto) {
+    async create(createSoftwareInventoryDto: CreateSoftwareInventoryDto, organizationId?: string) {
+      if (
+        organizationId &&
+        createSoftwareInventoryDto.organizationId !== organizationId
+      ) {
+        throw new NotFoundException('Organization not found');
+      }
+
       const organization = await this.prisma.organization.findUnique({
         where: {
           id: createSoftwareInventoryDto.organizationId,
@@ -129,11 +135,9 @@ import {
       };
     }
   
-    async update(id: string, updateSoftwareInventoryDto: UpdateSoftwareInventoryDto) {
-      const software = await this.prisma.softwareInventory.findUnique({
-        where: {
-          id,
-        },
+    async update(id: string, updateSoftwareInventoryDto: UpdateSoftwareInventoryDto, organizationId?: string) {
+      const software = await this.prisma.softwareInventory.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
       });
   
       if (!software) {
@@ -185,11 +189,9 @@ import {
       };
     }
   
-    async remove(id: string) {
-      const software = await this.prisma.softwareInventory.findUnique({
-        where: {
-          id,
-        },
+    async remove(id: string, organizationId?: string) {
+      const software = await this.prisma.softwareInventory.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
       });
   
       if (!software) {

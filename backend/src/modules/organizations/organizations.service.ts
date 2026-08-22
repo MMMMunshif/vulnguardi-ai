@@ -11,8 +11,9 @@ import {
   export class OrganizationsService {
     constructor(private readonly prisma: PrismaService) {}
   
-    async findAll() {
+    async findAll(organizationId?: string) {
       const organizations = await this.prisma.organization.findMany({
+        where: organizationId ? { id: organizationId } : undefined,
         orderBy: {
           createdAt: 'desc',
         },
@@ -42,11 +43,13 @@ import {
       };
     }
   
-    async findOne(id: string) {
-      const organization = await this.prisma.organization.findUnique({
-        where: {
-          id,
-        },
+    async findOne(id: string, organizationId?: string) {
+      if (organizationId && id !== organizationId) {
+        throw new NotFoundException('Organization not found');
+      }
+
+      const organization = await this.prisma.organization.findFirst({
+        where: { id },
         select: {
           id: true,
           name: true,
@@ -108,11 +111,13 @@ import {
       };
     }
   
-    async update(id: string, updateOrganizationDto: UpdateOrganizationDto) {
-      const organization = await this.prisma.organization.findUnique({
-        where: {
-          id,
-        },
+    async update(id: string, updateOrganizationDto: UpdateOrganizationDto, organizationId?: string) {
+      if (organizationId && id !== organizationId) {
+        throw new NotFoundException('Organization not found');
+      }
+
+      const organization = await this.prisma.organization.findFirst({
+        where: { id },
       });
   
       if (!organization) {
