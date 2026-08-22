@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
@@ -19,6 +20,14 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const { firstName, lastName, email, password } = registerDto;
+
+    const userCount = await this.prisma.user.count();
+
+    if (userCount > 0) {
+      throw new ForbiddenException(
+        'Public registration is disabled after the initial administrator is created',
+      );
+    }
 
     const existingUser = await this.prisma.user.findUnique({
       where: {
