@@ -10,6 +10,8 @@ import { SoftwareUpdateFindingsModule } from './modules/software-update-findings
 import { VulnerabilityFindingsModule } from './modules/vulnerability-findings/vulnerability-findings.module';
 import { RemediationActionsModule } from './modules/remediation-actions/remediation-actions.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AiRecommendationsModule } from './modules/ai-recommendations/ai-recommendations.module';
+
 
 
 @Module({
@@ -25,6 +27,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     VulnerabilityFindingsModule,
     RemediationActionsModule,
     DashboardModule,
+    AiRecommendationsModule,
   ],
 })
 export class AppModule {}
