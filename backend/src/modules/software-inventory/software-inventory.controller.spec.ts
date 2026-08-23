@@ -7,7 +7,9 @@ describe('SoftwareInventoryController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SoftwareInventoryController],
-    }).compile();
+    })
+      .useMocker(() => ({}))
+      .compile();
 
     controller = module.get<SoftwareInventoryController>(SoftwareInventoryController);
   });

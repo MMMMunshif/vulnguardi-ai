@@ -7,7 +7,9 @@ describe('SoftwareInventoryService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [SoftwareInventoryService],
-    }).compile();
+    })
+      .useMocker(() => ({}))
+      .compile();
 
     service = module.get<SoftwareInventoryService>(SoftwareInventoryService);
   });
