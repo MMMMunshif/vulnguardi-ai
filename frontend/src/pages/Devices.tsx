@@ -131,6 +131,7 @@ function Devices() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetches external data after mount.
     fetchDevices();
     fetchOrganizations();
     fetchUsers();

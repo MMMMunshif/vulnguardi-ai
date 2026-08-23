@@ -57,6 +57,7 @@ function Organizations() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetches external data after mount.
     fetchOrganizations();
   }, []);
 

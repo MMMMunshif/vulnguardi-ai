@@ -111,6 +111,7 @@ function SoftwareUpdateFindings() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetches external data after mount.
     fetchFindings();
     fetchSoftwareInventory();
   }, []);

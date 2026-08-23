@@ -112,6 +112,7 @@ function SoftwareInventory() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetches external data after mount.
     fetchSoftwareInventory();
     fetchOrganizations();
     fetchDevices();
@@ -131,6 +132,7 @@ function SoftwareInventory() {
         (device) => device.organization.id === form.organizationId,
       );
 
+      // eslint-disable-next-line react/set-state-in-effect -- Keeps the dependent selection valid.
       setForm((previous) => ({
         ...previous,
         deviceId: firstDevice?.id || '',

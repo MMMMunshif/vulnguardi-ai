@@ -242,6 +242,7 @@ function RemediationActions() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetches external data after mount.
     fetchActions();
     fetchVulnerabilities();
     fetchUsers();
@@ -389,6 +390,7 @@ function RemediationActions() {
 
     if (!linkedAction) return;
 
+    // eslint-disable-next-line react/set-state-in-effect -- Opens the action selected by the route.
     handleEdit(linkedAction);
     document
       .getElementById('remediation-form')

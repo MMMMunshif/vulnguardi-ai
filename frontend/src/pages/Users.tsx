@@ -114,6 +114,7 @@ function Users() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- Fetches external data after mount.
     fetchUsers();
     fetchOrganizations();
     fetchDepartments();
@@ -133,6 +134,7 @@ function Users() {
         (department) => department.organization.id === form.organizationId,
       );
 
+      // eslint-disable-next-line react/set-state-in-effect -- Keeps the dependent selection valid.
       setForm((previous) => ({
         ...previous,
         departmentId: firstDepartment?.id || '',
