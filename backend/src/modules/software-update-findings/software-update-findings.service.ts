@@ -137,7 +137,11 @@ export class SoftwareUpdateFindingsService {
 
     const status =
       createDto.status ||
-      this.calculateStatus(installedVersion, latestVersion, updateAvailable);
+      this.calculateStatus(
+        installedVersion,
+        latestVersion,
+        createDto.updateAvailable,
+      );
 
     const finding = await this.prisma.softwareUpdateFinding.create({
       data: {
@@ -182,7 +186,11 @@ export class SoftwareUpdateFindingsService {
 
     const status =
       updateDto.status ||
-      this.calculateStatus(installedVersion, latestVersion, updateAvailable);
+      this.calculateStatus(
+        installedVersion,
+        latestVersion,
+        updateDto.updateAvailable,
+      );
 
     const updatedFinding = await this.prisma.softwareUpdateFinding.update({
       where: {
