@@ -1,4 +1,8 @@
-import { ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   RemediationStatus,
   RemediationVerificationStatus,
@@ -16,6 +20,7 @@ describe('RemediationActionsService', () => {
       findUnique: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
+      delete: jest.Mock;
     };
     vulnerabilityFinding: {
       findFirst: jest.Mock;
@@ -33,6 +38,7 @@ describe('RemediationActionsService', () => {
         findUnique: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        delete: jest.fn(),
       },
       vulnerabilityFinding: {
         findFirst: jest.fn(),
@@ -66,6 +72,81 @@ describe('RemediationActionsService', () => {
 
     expect(prisma.remediationAction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { organizationId: 'org-1' } }),
+    );
+  });
+
+  it('uses tenant scope when fetching one remediation action', async () => {
+    prisma.remediationAction.findFirst.mockResolvedValue({ id: 'action-1' });
+
+    await service.findOne('action-1', 'org-1');
+
+    expect(prisma.remediationAction.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'action-1', organizationId: 'org-1' },
+      }),
+    );
+  });
+
+  it('rejects creating remediation for a vulnerability outside the tenant', async () => {
+    prisma.vulnerabilityFinding.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.create(
+        {
+          actionTitle: 'Patch app',
+          vulnerabilityFindingId: 'vuln-1',
+        },
+        'org-2',
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.remediationAction.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects an assigned user outside the vulnerability organization', async () => {
+    prisma.vulnerabilityFinding.findFirst.mockResolvedValue({
+      id: 'vuln-1',
+      organizationId: 'org-1',
+    });
+    prisma.remediationAction.findFirst.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.create({
+        actionTitle: 'Patch app',
+        vulnerabilityFindingId: 'vuln-1',
+        assignedUserId: 'user-2',
+      }),
+    ).rejects.toThrow('Assigned user not found in the selected organization');
+  });
+
+  it('creates remediation from trusted vulnerability ownership data', async () => {
+    const vulnerability = {
+      id: 'vuln-1',
+      softwareInventoryId: 'software-1',
+      deviceId: 'device-1',
+      organizationId: 'org-1',
+    };
+    prisma.vulnerabilityFinding.findFirst.mockResolvedValue(vulnerability);
+    prisma.remediationAction.findFirst.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue({ id: 'user-1' });
+    prisma.remediationAction.create.mockResolvedValue({ id: 'action-1' });
+
+    await service.create({
+      actionTitle: 'Patch app',
+      vulnerabilityFindingId: 'vuln-1',
+      assignedUserId: 'user-1',
+      dueDate: '2026-08-30T10:00:00.000Z',
+    });
+
+    expect(prisma.remediationAction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dueDate: new Date('2026-08-30T10:00:00.000Z'),
+          softwareInventoryId: 'software-1',
+          deviceId: 'device-1',
+          organizationId: 'org-1',
+        }),
+      }),
     );
   });
 
@@ -110,5 +191,72 @@ describe('RemediationActionsService', () => {
       data: { status: VulnerabilityStatus.RESOLVED },
     });
     expect(result.vulnerabilityResolved).toBe(true);
+  });
+
+  it('rejects completedAt when status is not completed', async () => {
+    prisma.remediationAction.findFirst.mockResolvedValue({
+      id: 'action-1',
+      status: RemediationStatus.PENDING,
+      verificationStatus: RemediationVerificationStatus.NOT_VERIFIED,
+    });
+
+    await expect(
+      service.update('action-1', {
+        status: RemediationStatus.IN_PROGRESS,
+        completedAt: '2026-08-25T10:00:00.000Z',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.remediationAction.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects verification before remediation is completed', async () => {
+    prisma.remediationAction.findFirst.mockResolvedValue({
+      id: 'action-1',
+      status: RemediationStatus.IN_PROGRESS,
+      verificationStatus: RemediationVerificationStatus.NOT_VERIFIED,
+      startedAt: new Date(),
+    });
+
+    await expect(
+      service.update('action-1', {
+        verificationStatus: RemediationVerificationStatus.VERIFIED,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('automatically records completion time for completed remediation', async () => {
+    prisma.remediationAction.findFirst.mockResolvedValue({
+      id: 'action-1',
+      status: RemediationStatus.IN_PROGRESS,
+      verificationStatus: RemediationVerificationStatus.NOT_VERIFIED,
+      vulnerabilityFindingId: 'vuln-1',
+      startedAt: new Date(),
+    });
+    prisma.remediationAction.update.mockResolvedValue({ id: 'action-1' });
+
+    await service.update('action-1', {
+      status: RemediationStatus.COMPLETED,
+    });
+
+    expect(prisma.remediationAction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ completedAt: expect.any(Date) }),
+      }),
+    );
+  });
+
+  it('deletes only a remediation action found inside the tenant', async () => {
+    prisma.remediationAction.findFirst.mockResolvedValue({ id: 'action-1' });
+    prisma.remediationAction.delete.mockResolvedValue({ id: 'action-1' });
+
+    await expect(service.remove('action-1', 'org-1')).resolves.toEqual({
+      message: 'Remediation action deleted successfully',
+    });
+    expect(prisma.remediationAction.findFirst).toHaveBeenCalledWith({
+      where: { id: 'action-1', organizationId: 'org-1' },
+    });
+    expect(prisma.remediationAction.delete).toHaveBeenCalledWith({
+      where: { id: 'action-1' },
+    });
   });
 });
