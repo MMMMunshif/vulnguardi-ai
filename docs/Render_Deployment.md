@@ -82,3 +82,7 @@ After deployment, check:
 
 If the frontend reports a network or CORS error, verify the two public URLs and
 redeploy both services after correcting their environment variables.
+
+The API health check uses `/api`, which returns the Swagger UI. The root route
+is intentionally not exposed and returns `404`, so it must not be used as the
+Render health-check path.

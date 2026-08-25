@@ -7,7 +7,7 @@ services:
     rootDir: backend
     buildCommand: npm ci --include=dev && npm run prisma:generate && npm run build
     startCommand: npm run db:deploy && npm run db:seed && npm run start:prod
-    healthCheckPath: /
+    healthCheckPath: /api
     envVars:
       - key: NODE_ENV
         value: production
