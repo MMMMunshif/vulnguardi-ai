@@ -52,6 +52,9 @@ The API build explicitly includes development dependencies because the NestJS
 compiler and Prisma CLI are build tools, while the deployed runtime itself uses
 `NODE_ENV=production`.
 
+The NestJS production entry point is `dist/src/main.js`, matching the compiled
+output produced by this repository's TypeScript configuration.
+
 ## Optional OpenAI Recommendations
 
 The Blueprint starts with `AI_PROVIDER=rules`, so AI Fix works without an API
