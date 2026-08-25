@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Inbox,
   Clock,
+  Download,
 } from 'lucide-react';
 import api from '../api/api';
 
@@ -216,6 +217,32 @@ function Dashboard() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const role = user?.role?.roleName || 'Security User';
+
+  const roleProfiles: Record<string, { title: string; description: string; cards: string[] }> = {
+    'Super Admin': {
+      title: 'Platform Governance Dashboard',
+      description: 'Cross-organization security posture, assets, users, and remediation performance.',
+      cards: ['Organizations', 'Users', 'Devices', 'Software Records', 'Update Findings', 'Vulnerabilities', 'Remediation Actions'],
+    },
+    'Organization Admin': {
+      title: 'Organization Security Dashboard',
+      description: 'Your organization’s users, assets, vulnerabilities, and remediation progress.',
+      cards: ['Users', 'Devices', 'Software Records', 'Update Findings', 'Vulnerabilities', 'Remediation Actions'],
+    },
+    'Security Analyst': {
+      title: 'Security Analyst Dashboard',
+      description: 'Prioritize vulnerability findings, update exposure, and remediation outcomes.',
+      cards: ['Devices', 'Software Records', 'Update Findings', 'Vulnerabilities', 'Remediation Actions'],
+    },
+    'IT Technician': {
+      title: 'IT Technician Dashboard',
+      description: 'Track affected assets, update findings, deadlines, and assigned remediation work.',
+      cards: ['Devices', 'Software Records', 'Update Findings', 'Remediation Actions'],
+    },
+  };
+  const roleProfile = roleProfiles[role] || roleProfiles['IT Technician'];
 
   const fetchDashboardData = async () => {
     try {
@@ -336,7 +363,7 @@ function Dashboard() {
     recentActivity.recentRemediationActions ||
     [];
 
-  const cards: { title: string; value: number; icon: typeof Building2; description: string; tone: Tone }[] = [
+  const allCards: { title: string; value: number; icon: typeof Building2; description: string; tone: Tone }[] = [
     {
       title: 'Organizations',
       value: summary.organizations ?? 0,
@@ -387,6 +414,7 @@ function Dashboard() {
       tone: 'amber',
     },
   ];
+  const cards = allCards.filter((card) => roleProfile.cards.includes(card.title));
 
   const totalAssets = (summary.devices ?? 0) + (summary.softwareInventory ?? 0);
   const securityWorkload = (summary.vulnerabilities ?? 0) + (summary.remediationActions ?? 0);
@@ -410,6 +438,98 @@ function Dashboard() {
       )
     : 0;
 
+  const exportDashboardPdf = async () => {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
+    const document = new jsPDF();
+    const getLastTableY = () =>
+      (document as unknown as { lastAutoTable: { finalY: number } })
+        .lastAutoTable.finalY;
+    const generatedAt = new Date();
+    const safeRole = role.replaceAll(' ', '-').toLowerCase();
+
+    document.setProperties({
+      title: `VulnGuard AI ${role} Security Report`,
+      subject: 'Security posture and remediation report',
+      author: 'VulnGuard AI',
+    });
+    document.setFontSize(20);
+    document.setTextColor(8, 145, 178);
+    document.text('VulnGuard AI', 14, 18);
+    document.setFontSize(14);
+    document.setTextColor(30, 41, 59);
+    document.text(`${role} Security Report`, 14, 28);
+    document.setFontSize(9);
+    document.setTextColor(100, 116, 139);
+    document.text(
+      `Generated ${generatedAt.toLocaleString()} by ${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+      14,
+      35,
+    );
+
+    autoTable(document, {
+      startY: 42,
+      head: [['Metric', 'Value', 'Scope']],
+      body: cards.map((card) => [card.title, card.value.toLocaleString(), role]),
+      headStyles: { fillColor: [8, 145, 178] },
+      styles: { fontSize: 9 },
+    });
+
+    const metricsEnd = getLastTableY() + 8;
+    autoTable(document, {
+      startY: metricsEnd,
+      head: [['Remediation KPI', 'Value']],
+      body: [
+        ['Pending', remediationProgress?.pending ?? 0],
+        ['In progress', remediationProgress?.inProgress ?? 0],
+        ['Completed', remediationProgress?.completed ?? 0],
+        ['Verified', remediationProgress?.verified ?? 0],
+        ['Overdue', remediationProgress?.overdue ?? 0],
+        ['Due soon', remediationProgress?.dueSoon ?? 0],
+        ['Completion rate', `${remediationCompletionRate}%`],
+        ['Verification rate', `${remediationVerificationRate}%`],
+      ],
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 9 },
+    });
+
+    const deadlines = recentActivity.deadlineRemediations || [];
+    if (deadlines.length > 0) {
+      autoTable(document, {
+        startY: getLastTableY() + 8,
+        head: [['Deadline', 'Action', 'Due date', 'Assigned to']],
+        body: deadlines.map((action) => [
+          action.deadlineState.replace('_', ' '),
+          action.actionTitle,
+          new Date(action.dueDate).toLocaleDateString(),
+          action.assignedUser
+            ? `${action.assignedUser.firstName} ${action.assignedUser.lastName}`
+            : 'Unassigned',
+        ]),
+        headStyles: { fillColor: [217, 119, 6] },
+        styles: { fontSize: 8 },
+      });
+    }
+
+    const pageCount = document.getNumberOfPages();
+    for (let page = 1; page <= pageCount; page += 1) {
+      document.setPage(page);
+      document.setFontSize(8);
+      document.setTextColor(100, 116, 139);
+      document.text(
+        `VulnGuard AI · Confidential · Page ${page} of ${pageCount}`,
+        14,
+        289,
+      );
+    }
+
+    document.save(
+      `vulnguard-${safeRole}-report-${generatedAt.toISOString().slice(0, 10)}.pdf`,
+    );
+  };
+
   return (
     <div>
       {/* Header */}
@@ -419,9 +539,9 @@ function Dashboard() {
             <Activity className="h-6 w-6 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{roleProfile.title}</h1>
             <p className="text-slate-400 mt-1 text-sm">
-              Overview of assets, vulnerabilities, updates, and remediation tasks.
+              {roleProfile.description}
             </p>
           </div>
         </div>
@@ -433,6 +553,14 @@ function Dashboard() {
               Updated {timeAgo(lastUpdated.toISOString())}
             </span>
           )}
+          <button
+            onClick={exportDashboardPdf}
+            disabled={initialLoad || loading}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-cyan-700 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Export PDF
+          </button>
           <button
             onClick={fetchDashboardData}
             disabled={loading}

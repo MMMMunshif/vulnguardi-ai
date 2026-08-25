@@ -13,15 +13,15 @@ import {
   import { NavLink, Outlet, useNavigate } from 'react-router-dom';
   
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Organizations', path: '/organizations', icon: Building2 },
-    { name: 'Departments', path: '/departments', icon: Network },
-    { name: 'Users', path: '/users', icon: Users },
-    { name: 'Devices', path: '/devices', icon: Monitor },
-    { name: 'Software Inventory', path: '/software-inventory', icon: Package },
-    { name: 'Update Findings', path: '/software-update-findings', icon: RefreshCw },
-    { name: 'Vulnerabilities', path: '/vulnerability-findings', icon: ShieldAlert },
-    { name: 'Remediation', path: '/remediation-actions', icon: Wrench },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
+    { name: 'Organizations', path: '/organizations', icon: Building2, roles: ['Super Admin', 'Organization Admin'] },
+    { name: 'Departments', path: '/departments', icon: Network, roles: ['Super Admin', 'Organization Admin'] },
+    { name: 'Users', path: '/users', icon: Users, roles: ['Super Admin', 'Organization Admin'] },
+    { name: 'Devices', path: '/devices', icon: Monitor, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
+    { name: 'Software Inventory', path: '/software-inventory', icon: Package, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
+    { name: 'Update Findings', path: '/software-update-findings', icon: RefreshCw, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
+    { name: 'Vulnerabilities', path: '/vulnerability-findings', icon: ShieldAlert, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
+    { name: 'Remediation', path: '/remediation-actions', icon: Wrench, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
   ];
   
   function MainLayout() {
@@ -46,7 +46,7 @@ import {
           </div>
   
           <nav className="flex-1 p-4 space-y-2">
-            {navItems.map((item) => {
+            {navItems.filter((item) => item.roles.includes(user?.role?.roleName)).map((item) => {
               const Icon = item.icon;
   
               return (
@@ -89,7 +89,9 @@ import {
         <div className="flex-1 flex flex-col">
           <header className="h-20 border-b border-slate-800 bg-slate-950 flex items-center justify-between px-8">
             <div>
-              <h2 className="text-xl font-bold">Security Dashboard</h2>
+              <h2 className="text-xl font-bold">
+                {user?.role?.roleName || 'Security'} Dashboard
+              </h2>
               <p className="text-sm text-slate-400">
                 Monitor assets, vulnerabilities, and remediation progress
               </p>

@@ -20,7 +20,8 @@ Organization -> Department -> User -> Device -> Software Inventory
 - CVE and vulnerability finding management
 - Rules-based or OpenAI remediation recommendations with safe fallback
 - Remediation assignment, due dates, lifecycle, and security verification
-- Dashboard analytics, overdue alerts, search, filters, and CSV exports
+- Role-specific dashboards and navigation for administrators, analysts, and technicians
+- Dashboard analytics, overdue alerts, search, filters, CSV exports, and downloadable PDF security reports
 - Swagger API documentation
 - Automated unit, E2E, coverage, lint, and production-build checks
 
