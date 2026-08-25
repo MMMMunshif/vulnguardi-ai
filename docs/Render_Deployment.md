@@ -48,6 +48,10 @@ department, and roles exist. Create the first administrator through the public
 registration page. Registration closes automatically after the first user is
 created.
 
+The API build explicitly includes development dependencies because the NestJS
+compiler and Prisma CLI are build tools, while the deployed runtime itself uses
+`NODE_ENV=production`.
+
 ## Optional OpenAI Recommendations
 
 The Blueprint starts with `AI_PROVIDER=rules`, so AI Fix works without an API
