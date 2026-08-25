@@ -3,6 +3,9 @@
 This guide covers local setup, production configuration, database deployment,
 verification, and common deployment problems.
 
+For a ready-to-use Render Blueprint and dashboard walkthrough, see
+[`Render_Deployment.md`](Render_Deployment.md).
+
 ## Requirements
 
 - Node.js 22 and npm
