@@ -62,11 +62,12 @@ the initial account is created.
 
 ## Documentation
 
-- [Deployment guide](../docs/Deployment_Guide.md)
-- [System architecture](../docs/System_Architecture.md)
-- [Database design](../docs/Database_Design.md)
-- [Software requirements](../docs/Software_Requirements_Specification.md)
-- [Project proposal](../docs/Project_Proposal.md)
+- [Deployment guide](docs/Deployment_Guide.md)
+- [Release audit](docs/Release_Audit.md)
+- [System architecture](docs/System_Architecture.md)
+- [Database design](docs/Database_Design.md)
+- [Software requirements](docs/Software_Requirements_Specification.md)
+- [Project proposal](docs/Project_Proposal.md)
 
 ## Verification
 
