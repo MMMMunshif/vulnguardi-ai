@@ -1,46 +1,85 @@
 # VulnGuard AI
 
-VulnGuard AI is a cybersecurity vulnerability management platform designed to help organizations track devices, installed software, outdated versions, vulnerability findings, and remediation actions in one centralized system.
+VulnGuard AI is a multi-tenant cybersecurity vulnerability management platform
+for tracking assets, software versions, vulnerabilities, AI-assisted fixes, and
+remediation progress.
 
-The system supports the full workflow from organization and asset management to vulnerability tracking and remediation progress monitoring.
-
----
-
-## Project Overview
-
-Many organizations manage software updates and vulnerability remediation manually using spreadsheets or disconnected tools. This can make it difficult to identify outdated software, track vulnerable assets, assign remediation tasks, and monitor security progress.
-
-VulnGuard AI provides a structured platform to manage:
-
-- Organizations
-- Departments
-- Users
-- Devices / Assets
-- Software Inventory
-- Software Update Findings
-- Vulnerability Findings
-- Remediation Actions
-- Dashboard Monitoring
-
----
-
-## Main Workflow
+## Core workflow
 
 ```text
-Organization
-   ↓
-Departments
-   ↓
-Users
-   ↓
-Devices / Assets
-   ↓
-Software Inventory
-   ↓
-Software Update Findings
-   ↓
-Vulnerability Findings
-   ↓
-Remediation Actions
-   ↓
-Dashboard Monitoring
+Organization -> Department -> User -> Device -> Software Inventory
+             -> Update Finding -> Vulnerability -> Remediation -> Verification
+```
+
+## Features
+
+- JWT authentication and role-based access control
+- Organization-level tenant isolation
+- Organization, department, user, and device management
+- Software inventory and update-status tracking
+- CVE and vulnerability finding management
+- Rules-based or OpenAI remediation recommendations with safe fallback
+- Remediation assignment, due dates, lifecycle, and security verification
+- Dashboard analytics, overdue alerts, search, filters, and CSV exports
+- Swagger API documentation
+- Automated unit, E2E, coverage, lint, and production-build checks
+
+## Technology
+
+- Backend: NestJS, TypeScript, Prisma, PostgreSQL
+- Frontend: React, TypeScript, Vite, Tailwind CSS
+- AI: deterministic rules engine with optional OpenAI Responses API provider
+- CI: GitHub Actions
+
+## Quick start
+
+```powershell
+cd backend
+Copy-Item .env.example .env
+npm ci
+npx prisma generate
+npx prisma migrate deploy
+npx prisma db seed
+npm run start:dev
+```
+
+In another terminal:
+
+```powershell
+cd frontend
+Copy-Item .env.example .env
+npm ci
+npm run dev
+```
+
+Open:
+
+- Frontend: `http://localhost:5173`
+- Swagger: `http://localhost:3000/api`
+
+Create the first administrator through registration. Registration locks after
+the initial account is created.
+
+## Documentation
+
+- [Deployment guide](../docs/Deployment_Guide.md)
+- [System architecture](../docs/System_Architecture.md)
+- [Database design](../docs/Database_Design.md)
+- [Software requirements](../docs/Software_Requirements_Specification.md)
+- [Project proposal](../docs/Project_Proposal.md)
+
+## Verification
+
+```powershell
+cd backend
+npm run test:cov -- --runInBand
+npm run test:e2e -- --runInBand
+npm run build
+
+cd ..\frontend
+npm run lint
+npm run build
+```
+
+See the deployment guide for production environment variables, migrations,
+security controls, and troubleshooting.
