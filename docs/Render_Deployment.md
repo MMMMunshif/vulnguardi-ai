@@ -40,13 +40,14 @@ The free Render web-service plan does not support a pre-deploy command. The API
 start command therefore runs these idempotent commands before starting NestJS:
 
 ```text
-npx prisma migrate deploy && npx prisma db seed && npm run start:prod
+npm run db:deploy && npm run db:seed && npm run start:prod
 ```
 
-This applies committed migrations and ensures the default organization,
-department, and roles exist. Create the first administrator through the public
-registration page. Registration closes automatically after the first user is
-created.
+This applies committed migrations and runs the compiled, idempotent seed script
+to ensure the default organization, department, and roles exist. Using compiled
+JavaScript keeps production startup independent of TypeScript runtime tooling.
+Create the first administrator through the public registration page.
+Registration closes automatically after the first user is created.
 
 The API build explicitly includes development dependencies because the NestJS
 compiler and Prisma CLI are build tools, while the deployed runtime itself uses
