@@ -26,10 +26,7 @@ services:
       - key: EMAIL_NOTIFICATIONS_ENABLED
         value: "false"
       - key: AI_SERVICE_URL
-        fromService:
-          type: web
-          name: vulnguard-ai-nvidia
-          property: hostport
+        value: https://vulnguard-ai-nvidia.onrender.com
       - key: AI_SERVICE_TOKEN
         fromService:
           type: web

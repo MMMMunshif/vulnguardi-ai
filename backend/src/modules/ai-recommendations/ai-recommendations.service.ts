@@ -82,7 +82,7 @@ export class AiRecommendationsService {
         'Content-Type': 'application/json',
         'X-AI-Service-Token': process.env.AI_SERVICE_TOKEN!,
       },
-      signal: AbortSignal.timeout(35_000),
+      signal: AbortSignal.timeout(90_000),
       body: JSON.stringify(dto),
     });
 
