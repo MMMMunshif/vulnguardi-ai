@@ -1,107 +1,54 @@
-# System Architecture
-
-# VulnGuard AI
+# VulnGuard AI System Architecture
 
 ## Overview
 
-VulnGuard AI follows a modular enterprise architecture where the frontend, backend, AI service, and database are separated into independent components.
+VulnGuard AI uses a multi-service architecture with a React frontend, NestJS
+API, PostgreSQL database, and an optional Python AI microservice. The NestJS API
+is the only application service that accesses tenant data.
 
-This architecture improves scalability, maintainability, and future expansion.
+```text
+React frontend
+      |
+      | HTTPS + JWT
+      v
+NestJS API -----------------> PostgreSQL
+      |
+      | private URL + service token
+      v
+FastAPI AI service ---------> NVIDIA NIM / Nemotron
+```
 
----
+## Frontend
 
-## Architecture Components
+- React, TypeScript, Vite, and Tailwind CSS
+- Authentication, role-specific navigation, dashboards, reports, and workflows
+- Calls only the NestJS API; AI credentials are never exposed to the browser
 
-### Frontend
+## Backend API
 
-- React
-- Vite
-- TypeScript
-- Tailwind CSS
+- NestJS, TypeScript, Prisma, and JWT authentication
+- Enforces role authorization and organization-level tenant isolation
+- Manages assets, software, findings, remediation, reports, and notifications
+- Routes AI requests to rules, OpenAI, or the protected FastAPI service
+- Falls back to deterministic rules if an external AI provider is unavailable
 
-Responsibilities
+## Database
 
-- User Interface
-- Authentication
-- Dashboard
-- Reports
-- AI Chat
-- Software Management
+- PostgreSQL managed through Prisma migrations
+- Stores organizations, users, devices, software, vulnerability findings, and
+  remediation actions
 
----
+## NVIDIA AI service
 
-### Backend API
+- Python FastAPI service packaged with Docker
+- Accepts only requests containing the shared `AI_SERVICE_TOKEN`
+- Sends vulnerability context to NVIDIA's OpenAI-compatible NIM endpoint
+- Validates Nemotron JSON output against a strict response model
+- Does not access the VulnGuard database or accept arbitrary model prompts
 
-- Node.js
-- Express.js
-- TypeScript
+## Deployment
 
-Responsibilities
-
-- Authentication
-- Authorization
-- Business Logic
-- API Endpoints
-- Notifications
-- Report Generation
-
----
-
-### Database
-
-- PostgreSQL
-- Prisma ORM
-
-Responsibilities
-
-- User Management
-- Organization Management
-- Software Inventory
-- Vulnerability Data
-- Remediation Tasks
-- Audit Logs
-
----
-
-### AI Service
-
-- Python
-- FastAPI
-
-Responsibilities
-
-- AI Chat
-- NVIDIA Nemotron Integration
-- RAG Pipeline
-- Machine Learning Prediction
-- Security Report Generation
-
----
-
-## High-Level Data Flow
-
-User
-
-↓
-
-React Frontend
-
-↓
-
-Express Backend API
-
-↓
-
-PostgreSQL Database
-
-↓
-
-FastAPI AI Service
-
-↓
-
-NVIDIA AI Models
-
-↓
-
-AI Response
+Render deploys the frontend, backend, PostgreSQL database, and optional AI
+service from `render.yaml`. Render's private service hostname and generated
+token connect the backend to FastAPI. Provider API keys remain secret runtime
+environment variables.

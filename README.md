@@ -20,7 +20,9 @@ Organization -> Department -> User -> Device -> Software Inventory
 - CVE and vulnerability finding management
 - Official NVD API lookup with CVE metadata, CVSS, CWE, and CISA KEV context
 - Public GitHub/GitLab repository dependency scanning with OSV.dev advisories
-- Rules-based or OpenAI remediation recommendations with safe fallback
+- Rules-based, OpenAI, or NVIDIA Nemotron remediation recommendations with safe fallback
+- Protected Python FastAPI AI microservice for NVIDIA NIM inference
+- Tenant-scoped email alerts for publicly exploitable vulnerabilities
 - Remediation assignment, due dates, lifecycle, and security verification
 - Role-specific dashboards and navigation for administrators, analysts, and technicians
 - Dashboard analytics, overdue alerts, search, filters, CSV exports, and downloadable PDF security reports
@@ -31,7 +33,7 @@ Organization -> Department -> User -> Device -> Software Inventory
 
 - Backend: NestJS, TypeScript, Prisma, PostgreSQL
 - Frontend: React, TypeScript, Vite, Tailwind CSS
-- AI: deterministic rules engine with optional OpenAI Responses API provider
+- AI: rules engine, OpenAI Responses API, and NVIDIA NIM/Nemotron via FastAPI
 - CI: GitHub Actions
 
 ## Quick start
@@ -53,6 +55,17 @@ cd frontend
 Copy-Item .env.example .env
 npm ci
 npm run dev
+```
+
+Optional NVIDIA AI service, in a third terminal:
+
+```powershell
+cd ai-service
+Copy-Item .env.example .env
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload --port 8000
 ```
 
 Open:
@@ -83,6 +96,9 @@ npm run build
 cd ..\frontend
 npm run lint
 npm run build
+
+cd ..\ai-service
+python -m pytest -q
 ```
 
 See the deployment guide for production environment variables, migrations,

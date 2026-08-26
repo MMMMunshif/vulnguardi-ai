@@ -25,6 +25,34 @@ services:
         value: gpt-5-mini
       - key: EMAIL_NOTIFICATIONS_ENABLED
         value: "false"
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: vulnguard-ai-nvidia
+          property: host
+      - key: AI_SERVICE_TOKEN
+        fromService:
+          type: web
+          name: vulnguard-ai-nvidia
+          envVarKey: AI_SERVICE_TOKEN
+
+  - type: web
+    name: vulnguard-ai-nvidia
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./ai-service/Dockerfile
+    dockerContext: ./ai-service
+    healthCheckPath: /health
+    envVars:
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_BASE_URL
+        value: https://integrate.api.nvidia.com/v1
+      - key: NVIDIA_MODEL
+        value: nvidia/nemotron-3-super-120b-a12b
+      - key: AI_SERVICE_TOKEN
+        generateValue: true
 
   - type: web
     name: vulnguard-ai-frontend

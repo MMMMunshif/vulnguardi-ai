@@ -22,7 +22,25 @@ export class AiRecommendationsService {
   async generateRemediationRecommendation(
     dto: GenerateRemediationRecommendationDto,
   ) {
-    const useOpenAi = process.env.AI_PROVIDER?.toLowerCase() === 'openai';
+    const provider = process.env.AI_PROVIDER?.toLowerCase();
+    const useNvidia = provider === 'nvidia';
+    const useOpenAi = provider === 'openai';
+
+    if (useNvidia && process.env.AI_SERVICE_URL && process.env.AI_SERVICE_TOKEN) {
+      try {
+        const recommendation = await this.generateWithNvidia(dto);
+        return this.withMetadata(
+          recommendation,
+          'VulnGuard AI powered by NVIDIA Nemotron',
+          'nvidia',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.warn(
+          `NVIDIA recommendation failed; using rules fallback: ${message}`,
+        );
+      }
+    }
 
     if (useOpenAi && process.env.OPENAI_API_KEY) {
       try {
@@ -42,11 +60,37 @@ export class AiRecommendationsService {
 
     return this.withMetadata(
       this.generateWithRules(dto),
-      useOpenAi
-        ? 'VulnGuard Rules Engine (OpenAI fallback)'
-        : 'VulnGuard AI Smart Recommendation Engine',
+      useNvidia
+        ? 'VulnGuard Rules Engine (NVIDIA fallback)'
+        : useOpenAi
+          ? 'VulnGuard Rules Engine (OpenAI fallback)'
+          : 'VulnGuard AI Smart Recommendation Engine',
       'rules',
     );
+  }
+
+  private async generateWithNvidia(
+    dto: GenerateRemediationRecommendationDto,
+  ): Promise<RecommendationCore> {
+    const configuredUrl = process.env.AI_SERVICE_URL!.replace(/\/$/, '');
+    const baseUrl = /^https?:\/\//.test(configuredUrl)
+      ? configuredUrl
+      : `http://${configuredUrl}`;
+    const response = await fetch(`${baseUrl}/recommendations/remediation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-AI-Service-Token': process.env.AI_SERVICE_TOKEN!,
+      },
+      signal: AbortSignal.timeout(35_000),
+      body: JSON.stringify(dto),
+    });
+
+    if (!response.ok) {
+      throw new Error(`NVIDIA AI service returned ${response.status}`);
+    }
+
+    return this.validateRecommendation(await response.json());
   }
 
   private async generateWithOpenAi(
@@ -153,7 +197,7 @@ export class AiRecommendationsService {
       recommendation.remediationSteps.length === 0 ||
       !recommendation.remediationSteps.every((step) => typeof step === 'string')
     ) {
-      throw new Error('OpenAI response failed recommendation validation');
+      throw new Error('AI response failed recommendation validation');
     }
 
     return recommendation as RecommendationCore;
@@ -217,7 +261,7 @@ export class AiRecommendationsService {
   private withMetadata(
     recommendation: RecommendationCore,
     generatedBy: string,
-    provider: 'openai' | 'rules',
+    provider: 'nvidia' | 'openai' | 'rules',
   ) {
     const slaHours = this.getSlaHours(recommendation.priority);
     return {

@@ -41,6 +41,20 @@ Use `AI_PROVIDER="rules"` for deterministic local recommendations. For OpenAI,
 set `AI_PROVIDER="openai"` and provide `OPENAI_API_KEY`. Provider failures fall
 back to the rules engine.
 
+For NVIDIA Nemotron recommendations, run the FastAPI service in `ai-service`
+and configure the backend:
+
+```env
+AI_PROVIDER="nvidia"
+AI_SERVICE_URL="http://localhost:8000"
+AI_SERVICE_TOKEN="the-same-secret-used-by-the-ai-service"
+```
+
+Configure the AI service with `NVIDIA_API_KEY`, `NVIDIA_MODEL`, and the same
+`AI_SERVICE_TOKEN`. It calls NVIDIA's OpenAI-compatible NIM chat-completions API
+and validates the model output before returning it. If the microservice or NIM
+is unavailable, the NestJS backend safely falls back to the rules engine.
+
 ## High-priority email alerts
 
 VulnGuard can notify active Organization Admin and Security Analyst users when
@@ -97,6 +111,16 @@ Frontend, in another terminal:
 cd frontend
 npm ci
 npm run dev
+```
+
+NVIDIA AI service, in a third terminal:
+
+```powershell
+cd ai-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload --port 8000
 ```
 
 ## Database changes

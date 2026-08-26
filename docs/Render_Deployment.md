@@ -5,6 +5,7 @@ The root `render.yaml` deploys VulnGuard AI as three connected resources:
 - `vulnguard-ai-api`: free Node.js web service
 - `vulnguard-ai-frontend`: static React/Vite site
 - `vulnguard-ai-db`: free Render PostgreSQL database
+- `vulnguard-ai-nvidia`: optional Dockerized FastAPI AI service
 
 This free configuration is suitable for a demo or portfolio deployment, not a
 production workload. Free web services can spin down when idle, and free
@@ -69,6 +70,17 @@ OPENAI_MODEL=gpt-5-mini
 ```
 
 Never add the API key to `render.yaml` or Git.
+
+## Optional NVIDIA Nemotron Recommendations
+
+The Blueprint deploys the protected FastAPI service and privately wires its URL
+and generated service token into the backend. In Render, add `NVIDIA_API_KEY`
+to `vulnguard-ai-nvidia`, then set the API service's `AI_PROVIDER` to `nvidia`.
+The default remains `rules`, so deployments work before an NVIDIA key is added.
+
+The default model is `nvidia/nemotron-3-super-120b-a12b`. You can change
+`NVIDIA_MODEL` in the AI service environment to another compatible NIM model.
+Never expose `AI_SERVICE_TOKEN` in the frontend.
 
 ## Optional vulnerability email alerts
 

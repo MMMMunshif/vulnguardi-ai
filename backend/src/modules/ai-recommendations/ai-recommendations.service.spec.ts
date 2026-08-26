@@ -6,6 +6,8 @@ describe('AiRecommendationsService', () => {
   afterEach(() => {
     delete process.env.AI_PROVIDER;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.AI_SERVICE_URL;
+    delete process.env.AI_SERVICE_TOKEN;
     jest.restoreAllMocks();
   });
 
@@ -77,5 +79,51 @@ describe('AiRecommendationsService', () => {
     expect(result.provider).toBe('openai');
     expect(result.actionType).toBe('CONFIGURATION_CHANGE');
     expect(result.generatedBy).toBe('VulnGuard AI powered by OpenAI');
+  });
+
+  it('uses the NVIDIA AI microservice when configured', async () => {
+    process.env.AI_PROVIDER = 'nvidia';
+    process.env.AI_SERVICE_URL = 'https://ai.example.com/';
+    process.env.AI_SERVICE_TOKEN = 'service-secret';
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        priority: 'Critical',
+        actionType: 'UPDATE_SOFTWARE',
+        recommendedFix: 'Deploy the fixed release.',
+        explanation: 'A public exploit affects this release.',
+        remediationSteps: ['Test the release.', 'Deploy the release.'],
+      }),
+    } as Response);
+
+    const result = await service.generateRemediationRecommendation({
+      title: 'Publicly exploited vulnerability',
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://ai.example.com/recommendations/remediation',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-AI-Service-Token': 'service-secret',
+        }),
+      }),
+    );
+    expect(result.provider).toBe('nvidia');
+    expect(result.generatedBy).toBe('VulnGuard AI powered by NVIDIA Nemotron');
+  });
+
+  it('falls back to rules when the NVIDIA AI service fails', async () => {
+    process.env.AI_PROVIDER = 'nvidia';
+    process.env.AI_SERVICE_URL = 'https://ai.example.com';
+    process.env.AI_SERVICE_TOKEN = 'service-secret';
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('service offline'));
+
+    const result = await service.generateRemediationRecommendation({
+      title: 'Fallback vulnerability',
+    });
+
+    expect(result.provider).toBe('rules');
+    expect(result.generatedBy).toBe('VulnGuard Rules Engine (NVIDIA fallback)');
   });
 });
