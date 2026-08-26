@@ -20,7 +20,7 @@ services:
       - key: CORS_ORIGIN
         sync: false
       - key: AI_PROVIDER
-        value: rules
+        value: nvidia
       - key: OPENAI_MODEL
         value: gpt-5-mini
       - key: EMAIL_NOTIFICATIONS_ENABLED

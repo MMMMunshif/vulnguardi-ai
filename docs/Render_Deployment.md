@@ -59,9 +59,9 @@ output produced by this repository's TypeScript configuration.
 
 ## Optional OpenAI Recommendations
 
-The Blueprint starts with `AI_PROVIDER=rules`, so AI Fix works without an API
-key. To enable OpenAI recommendations, add these secret environment variables
-to the API service:
+The Blueprint uses `AI_PROVIDER=nvidia` and falls back to the built-in rules
+engine whenever the optional AI service is not configured or unavailable. To
+use OpenAI instead, add these secret environment variables to the API service:
 
 ```env
 AI_PROVIDER=openai
@@ -76,7 +76,8 @@ Never add the API key to `render.yaml` or Git.
 The Blueprint deploys the protected FastAPI service, wires its HTTPS URL into
 the backend, and shares a generated service token. In Render, add `NVIDIA_API_KEY`
 to `vulnguard-ai-nvidia`, then set the API service's `AI_PROVIDER` to `nvidia`.
-The default remains `rules`, so deployments work before an NVIDIA key is added.
+Deployments continue to work before an NVIDIA key is added because provider
+failures automatically use the deterministic rules engine.
 
 The default model is `nvidia/nemotron-3-super-120b-a12b`. You can change
 `NVIDIA_MODEL` in the AI service environment to another compatible NIM model.
