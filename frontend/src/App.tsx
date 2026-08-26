@@ -10,6 +10,7 @@ import SoftwareInventory from './pages/SoftwareInventory';
 import SoftwareUpdateFindings from './pages/SoftwareUpdateFindings';
 import VulnerabilityFindings from './pages/VulnerabilityFindings';
 import RemediationActions from './pages/RemediationActions';
+import RepositoryScanning from './pages/RepositoryScanning';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -59,6 +60,7 @@ function App() {
 />
 
 <Route path="/remediation-actions" element={<RemediationActions />} />
+          <Route path="/repository-scanning" element={<RepositoryScanning />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -11,6 +11,7 @@ import { VulnerabilityFindingsModule } from './modules/vulnerability-findings/vu
 import { RemediationActionsModule } from './modules/remediation-actions/remediation-actions.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiRecommendationsModule } from './modules/ai-recommendations/ai-recommendations.module';
+import { RepositoryScansModule } from './modules/repository-scans/repository-scans.module';
 
 
 
@@ -28,6 +29,7 @@ import { AiRecommendationsModule } from './modules/ai-recommendations/ai-recomme
     RemediationActionsModule,
     DashboardModule,
     AiRecommendationsModule,
+    RepositoryScansModule,
   ],
 })
 export class AppModule {}

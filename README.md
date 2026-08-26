@@ -19,6 +19,7 @@ Organization -> Department -> User -> Device -> Software Inventory
 - Software inventory and update-status tracking
 - CVE and vulnerability finding management
 - Official NVD API lookup with CVE metadata, CVSS, CWE, and CISA KEV context
+- Public GitHub/GitLab repository dependency scanning with OSV.dev advisories
 - Rules-based or OpenAI remediation recommendations with safe fallback
 - Remediation assignment, due dates, lifecycle, and security verification
 - Role-specific dashboards and navigation for administrators, analysts, and technicians
