@@ -41,6 +41,29 @@ Use `AI_PROVIDER="rules"` for deterministic local recommendations. For OpenAI,
 set `AI_PROVIDER="openai"` and provide `OPENAI_API_KEY`. Provider failures fall
 back to the rules engine.
 
+## High-priority email alerts
+
+VulnGuard can notify active Organization Admin and Security Analyst users when
+a finding is created with a public exploit, or when an existing finding changes
+to that state. Alerts are tenant-scoped, deduplicated on updates, and mail
+delivery failures do not block vulnerability changes.
+
+Configure the backend runtime with an SMTP account:
+
+```env
+EMAIL_NOTIFICATIONS_ENABLED="true"
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="587"
+SMTP_SECURE="false"
+SMTP_USER="smtp-user"
+SMTP_PASS="smtp-password"
+SMTP_FROM="VulnGuard AI <alerts@example.com>"
+FRONTEND_URL="https://your-frontend.example.com"
+```
+
+Use `SMTP_SECURE="true"` for implicit TLS services (commonly port 465). Store
+SMTP credentials in the deployment platform's secret manager, never in Git.
+
 ## Frontend environment
 
 Copy `frontend/.env.example` to `frontend/.env`:

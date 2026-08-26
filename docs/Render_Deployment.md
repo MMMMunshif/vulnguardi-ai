@@ -70,6 +70,13 @@ OPENAI_MODEL=gpt-5-mini
 
 Never add the API key to `render.yaml` or Git.
 
+## Optional vulnerability email alerts
+
+To email Organization Admin and Security Analyst users when a public exploit is
+detected, add the SMTP variables documented in `Deployment_Guide.md` to the API
+service's **Environment** page. Set `EMAIL_NOTIFICATIONS_ENABLED=true` only
+after all SMTP values are saved, then choose **Save, rebuild, and deploy**.
+
 ## Verification
 
 After deployment, check:
