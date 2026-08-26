@@ -73,7 +73,7 @@ Never add the API key to `render.yaml` or Git.
 
 ## Optional NVIDIA Nemotron Recommendations
 
-The Blueprint deploys the protected FastAPI service and privately wires its URL
+The Blueprint deploys the protected FastAPI service and privately wires its host and port
 and generated service token into the backend. In Render, add `NVIDIA_API_KEY`
 to `vulnguard-ai-nvidia`, then set the API service's `AI_PROVIDER` to `nvidia`.
 The default remains `rules`, so deployments work before an NVIDIA key is added.

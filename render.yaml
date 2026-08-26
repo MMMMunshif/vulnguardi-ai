@@ -29,7 +29,7 @@ services:
         fromService:
           type: web
           name: vulnguard-ai-nvidia
-          property: host
+          property: hostport
       - key: AI_SERVICE_TOKEN
         fromService:
           type: web
