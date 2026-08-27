@@ -11,6 +11,7 @@ import SoftwareUpdateFindings from './pages/SoftwareUpdateFindings';
 import VulnerabilityFindings from './pages/VulnerabilityFindings';
 import RemediationActions from './pages/RemediationActions';
 import RepositoryScanning from './pages/RepositoryScanning';
+import AuditLogs from './pages/AuditLogs';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,7 @@ function App() {
 
 <Route path="/remediation-actions" element={<RemediationActions />} />
           <Route path="/repository-scanning" element={<RepositoryScanning />} />
+          <Route path="/audit-logs" element={<AuditLogs />} />
         </Route>
       </Routes>
     </BrowserRouter>

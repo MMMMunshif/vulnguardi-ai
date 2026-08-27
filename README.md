@@ -23,6 +23,7 @@ Organization -> Department -> User -> Device -> Software Inventory
 - Rules-based, OpenAI, or NVIDIA Nemotron remediation recommendations with safe fallback
 - Protected Python FastAPI AI microservice for NVIDIA NIM inference
 - Tenant-scoped email alerts for publicly exploitable vulnerabilities
+- Tenant-scoped login and mutation audit trail with administrative CSV export
 - Remediation assignment, due dates, lifecycle, and security verification
 - Role-specific dashboards and navigation for administrators, analysts, and technicians
 - Dashboard analytics, overdue alerts, search, filters, CSV exports, and downloadable PDF security reports

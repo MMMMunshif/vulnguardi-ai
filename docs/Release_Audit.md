@@ -12,17 +12,17 @@ a deployment candidate.
 
 | Area | Result |
 | --- | --- |
-| Backend unit and coverage suite | 141 tests passed across 29 suites |
+| Backend unit and coverage suite | 147 tests passed across 31 suites |
 | Backend organization-isolation E2E suite | 4 tests passed |
 | FastAPI NVIDIA service | 6 tests passed |
 | Backend production build | Passed |
 | Frontend lint | Passed with zero warnings |
 | Frontend production build | Passed |
-| Global statement coverage | 79.54% |
-| Global branch coverage | 67.76% |
-| Global function coverage | 73.76% |
-| Global line coverage | 80.96% |
-| Prisma migration inventory | Six migrations present |
+| Global statement coverage | 78.87% |
+| Global branch coverage | 67.00% |
+| Global function coverage | 74.41% |
+| Global line coverage | 80.39% |
+| Prisma migration inventory | Seven migrations present |
 | CI workflow | Backend, frontend, and FastAPI checks configured |
 | Backend production dependency audit | 0 known vulnerabilities |
 | Frontend production dependency audit | 0 known vulnerabilities |
@@ -73,6 +73,5 @@ Final results:
 ## Planned scope not yet implemented
 
 The SRS remains the broader target specification. Password reset, email
-verification, refresh tokens, SSO, evidence uploads, a user-facing audit-log
-module, RAG, and custom model training remain planned work and are not claimed
-as part of this release candidate.
+verification, refresh tokens, SSO, evidence uploads, RAG, and custom model
+training remain planned work and are not claimed as part of this release candidate.

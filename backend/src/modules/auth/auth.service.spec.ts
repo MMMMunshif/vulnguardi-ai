@@ -39,6 +39,7 @@ describe('AuthService', () => {
     organization: { findFirst: jest.fn() },
     department: { findFirst: jest.fn() },
     role: { findFirst: jest.fn() },
+    auditLog: { create: jest.fn() },
   };
   const jwt = { signAsync: jest.fn() };
 
@@ -174,5 +175,12 @@ describe('AuthService', () => {
       },
     });
     expect(result.user).not.toHaveProperty('password');
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'LOGIN',
+        userId: loginUser.id,
+        organizationId: loginUser.organizationId,
+      }),
+    });
   });
 });

@@ -136,6 +136,25 @@ export class AuthService {
 
     const accessToken = await this.jwtService.signAsync(payload);
 
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'LOGIN',
+          resource: 'auth',
+          resourceId: user.id,
+          method: 'POST',
+          path: '/auth/login',
+          statusCode: 200,
+          actorEmail: user.email,
+          message: 'User logged in successfully',
+          userId: user.id,
+          organizationId: user.organizationId,
+        },
+      });
+    } catch {
+      // Authentication remains available if audit persistence is temporarily unavailable.
+    }
+
     return {
       message: 'Login successful',
       accessToken,

@@ -24,6 +24,7 @@ model Organization {
   softwareUpdateFindings  SoftwareUpdateFinding[]
   vulnerabilityFindings   VulnerabilityFinding[]
   remediationActions      RemediationAction[]
+  auditLogs               AuditLog[]
 
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -80,9 +81,34 @@ model User {
 
   assignedDevices            Device[]
   assignedRemediationActions RemediationAction[]
+  auditLogs                  AuditLog[]
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  action         String
+  resource       String
+  resourceId     String?
+  method         String
+  path           String
+  statusCode     Int
+  actorEmail     String
+  message        String?
+
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
+  @@index([resource, action])
 }
 
 model Device {

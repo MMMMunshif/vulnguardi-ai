@@ -12,6 +12,7 @@ import { RemediationActionsModule } from './modules/remediation-actions/remediat
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiRecommendationsModule } from './modules/ai-recommendations/ai-recommendations.module';
 import { RepositoryScansModule } from './modules/repository-scans/repository-scans.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 
 
 
@@ -30,6 +31,7 @@ import { RepositoryScansModule } from './modules/repository-scans/repository-sca
     DashboardModule,
     AiRecommendationsModule,
     RepositoryScansModule,
+    AuditLogsModule,
   ],
 })
 export class AppModule {}

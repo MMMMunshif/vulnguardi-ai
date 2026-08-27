@@ -10,6 +10,7 @@ import {
     RefreshCw,
     Network,
     GitBranch,
+    ClipboardList,
   } from 'lucide-react';
   import { NavLink, Outlet, useNavigate } from 'react-router-dom';
   
@@ -24,6 +25,7 @@ import {
     { name: 'Vulnerabilities', path: '/vulnerability-findings', icon: ShieldAlert, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
     { name: 'Remediation', path: '/remediation-actions', icon: Wrench, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
     { name: 'Repository Scanning', path: '/repository-scanning', icon: GitBranch, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
+    { name: 'Audit Logs', path: '/audit-logs', icon: ClipboardList, roles: ['Super Admin', 'Organization Admin'] },
   ];
   
   function MainLayout() {
