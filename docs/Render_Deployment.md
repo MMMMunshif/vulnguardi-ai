@@ -86,7 +86,8 @@ Never expose `AI_SERVICE_TOKEN` in the frontend.
 The AI service uses a public HTTPS URL because free Render web services do not
 expose a private connection URL. Requests still require the generated shared
 token. The backend allows 90 seconds for the first request because a sleeping
-free service can take 50 seconds or longer to start.
+free service can take 50 seconds or longer to start. It warms the health endpoint
+before inference and retries one transient `502` response from Render's proxy.
 
 ## Optional vulnerability email alerts
 

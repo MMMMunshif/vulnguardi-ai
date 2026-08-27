@@ -126,4 +126,33 @@ describe('AiRecommendationsService', () => {
     expect(result.provider).toBe('rules');
     expect(result.generatedBy).toBe('VulnGuard Rules Engine (NVIDIA fallback)');
   });
+
+  it('warms and retries the NVIDIA service after a transient 502', async () => {
+    process.env.AI_PROVIDER = 'nvidia';
+    process.env.AI_SERVICE_URL = 'https://ai.example.com';
+    process.env.AI_SERVICE_TOKEN = 'service-secret';
+    const recommendation = {
+      priority: 'High',
+      actionType: 'VERIFY_PATCH',
+      recommendedFix: 'Verify the vendor patch.',
+      explanation: 'The affected release requires review.',
+      remediationSteps: ['Review the advisory.'],
+    };
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce({ ok: true, status: 200 } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 502 } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => recommendation,
+      } as Response);
+
+    const result = await service.generateRemediationRecommendation({
+      title: 'Transient service test',
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(result.provider).toBe('nvidia');
+  });
 });

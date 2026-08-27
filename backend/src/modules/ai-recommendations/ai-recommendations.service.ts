@@ -76,18 +76,31 @@ export class AiRecommendationsService {
     const baseUrl = /^https?:\/\//.test(configuredUrl)
       ? configuredUrl
       : `http://${configuredUrl}`;
-    const response = await fetch(`${baseUrl}/recommendations/remediation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-AI-Service-Token': process.env.AI_SERVICE_TOKEN!,
-      },
-      signal: AbortSignal.timeout(90_000),
-      body: JSON.stringify(dto),
-    });
+    try {
+      await fetch(`${baseUrl}/health`, {
+        signal: AbortSignal.timeout(90_000),
+      });
+    } catch {
+      // The protected recommendation request below reports the actionable error.
+    }
 
-    if (!response.ok) {
-      throw new Error(`NVIDIA AI service returned ${response.status}`);
+    let response: Response | undefined;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      response = await fetch(`${baseUrl}/recommendations/remediation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-AI-Service-Token': process.env.AI_SERVICE_TOKEN!,
+        },
+        signal: AbortSignal.timeout(90_000),
+        body: JSON.stringify(dto),
+      });
+
+      if (response.status !== 502) break;
+    }
+
+    if (!response?.ok) {
+      throw new Error(`NVIDIA AI service returned ${response?.status || 502}`);
     }
 
     return this.validateRecommendation(await response.json());
