@@ -1,0 +1,86 @@
+name: vulnguard-ai
+
+services:
+  database:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vulnguard_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-vulnguard_ai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vulnguard_local_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ai-service:
+    build:
+      context: ./ai-service
+    restart: unless-stopped
+    environment:
+      PORT: 8000
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      NVIDIA_BASE_URL: https://integrate.api.nvidia.com/v1
+      NVIDIA_MODEL: ${NVIDIA_MODEL:-nvidia/nemotron-3-super-120b-a12b}
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-vulnguard-local-ai-token}
+      REQUEST_TIMEOUT_SECONDS: 90
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vulnguard_ai}:${POSTGRES_PASSWORD:-vulnguard_local_password}@database:5432/${POSTGRES_DB:-vulnguard_ai}
+      JWT_SECRET: ${JWT_SECRET:-replace-this-local-jwt-secret}
+      CORS_ORIGIN: http://localhost:8080
+      AI_PROVIDER: nvidia
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-vulnguard-local-ai-token}
+      NVD_API_KEY: ${NVD_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITLAB_TOKEN: ${GITLAB_TOKEN:-}
+      EMAIL_NOTIFICATIONS_ENABLED: "false"
+    ports:
+      - "3000:3000"
+    depends_on:
+      database:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:3000
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

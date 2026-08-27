@@ -49,6 +49,10 @@ FastAPI AI service ---------> NVIDIA NIM / Nemotron
 ## Deployment
 
 Render deploys the frontend, backend, PostgreSQL database, and optional AI
-service from `render.yaml`. Render's private service hostname and generated
-token connect the backend to FastAPI. Provider API keys remain secret runtime
+service from `render.yaml`. An HTTPS service URL and generated shared token
+connect the backend to FastAPI. Provider API keys remain secret runtime
 environment variables.
+
+For portable full-stack deployment, `compose.yaml` builds production frontend,
+backend, and FastAPI images and connects them to PostgreSQL with health-ordered
+startup and persistent storage.

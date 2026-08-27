@@ -35,6 +35,7 @@ Organization -> Department -> User -> Device -> Software Inventory
 - Frontend: React, TypeScript, Vite, Tailwind CSS
 - AI: rules engine, OpenAI Responses API, and NVIDIA NIM/Nemotron via FastAPI
 - CI: GitHub Actions
+- Containers: Docker Compose, Nginx, Node.js, Python, and PostgreSQL images
 
 ## Quick start
 
@@ -73,12 +74,23 @@ Open:
 - Frontend: `http://localhost:5173`
 - Swagger: `http://localhost:3000/api`
 
+To run the complete stack with Docker instead:
+
+```powershell
+Copy-Item compose.env.example .env
+docker compose up --build -d
+```
+
+Then open `http://localhost:8080`. See the Docker deployment guide for secrets,
+logs, persistence, and shutdown commands.
+
 Create the first administrator through registration. Registration locks after
 the initial account is created.
 
 ## Documentation
 
 - [Deployment guide](docs/Deployment_Guide.md)
+- [Docker deployment](docs/Docker_Deployment.md)
 - [Release audit](docs/Release_Audit.md)
 - [System architecture](docs/System_Architecture.md)
 - [Database design](docs/Database_Design.md)
