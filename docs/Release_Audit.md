@@ -1,6 +1,6 @@
 # VulnGuard AI Release Audit
 
-Audit date: 2026-08-25
+Audit date: 2026-08-27
 
 ## Release status
 
@@ -12,17 +12,20 @@ a deployment candidate.
 
 | Area | Result |
 | --- | --- |
-| Backend unit and coverage suite | 125 tests passed |
+| Backend unit and coverage suite | 141 tests passed across 29 suites |
 | Backend organization-isolation E2E suite | 4 tests passed |
+| FastAPI NVIDIA service | 6 tests passed |
 | Backend production build | Passed |
 | Frontend lint | Passed with zero warnings |
 | Frontend production build | Passed |
-| Global statement coverage | 80.35% |
-| Global branch coverage | 68.93% |
-| Global function coverage | 69.38% |
-| Global line coverage | 81.21% |
+| Global statement coverage | 79.54% |
+| Global branch coverage | 67.76% |
+| Global function coverage | 73.76% |
+| Global line coverage | 80.96% |
 | Prisma migration inventory | Six migrations present |
-| CI workflow | Backend and frontend checks configured |
+| CI workflow | Backend, frontend, and FastAPI checks configured |
+| Backend production dependency audit | 0 known vulnerabilities |
+| Frontend production dependency audit | 0 known vulnerabilities |
 | Secret-pattern review | No committed live application secrets found |
 | TODO/FIXME/HACK review | No application markers found |
 | Environment configuration | Backend/frontend examples documented |
@@ -38,34 +41,38 @@ a deployment candidate.
 - Passwords are hashed and excluded from API responses.
 - CORS origins and frontend API URL are environment-configurable.
 - AI provider credentials remain server-side, with a deterministic fallback.
+- FastAPI inference requires a timing-safe shared service-token check.
+- Public-exploit email alerts are tenant-scoped and non-blocking.
+- Repository scanning restricts remote hosts and dependency manifest limits.
 - Remediation completion and verification rules are validated.
 
-## Dependency audit note
+## Dependency audit
 
-`npm audit --omit=dev --audit-level=high` was attempted for both applications.
-The local npm registry connection rejected certificate verification, so npm did
-not return an advisory report. TLS verification was not disabled.
+Production dependency audits were run against the npm registry. Initial backend
+results identified high-severity issues in Swagger's YAML parser and Prisma
+configuration's merge utility. `@nestjs/swagger` was upgraded to a fixed release
+and `deepmerge-ts` was constrained to its fixed major version. Prisma client
+generation, schema validation, all tests, and production builds passed afterward.
 
-Before production deployment, rerun the following in an environment with a
-valid trusted certificate chain:
+Final results:
 
-```powershell
-cd backend
-npm audit --omit=dev --audit-level=high
-
-cd ..\frontend
-npm audit --omit=dev --audit-level=high
-```
-
-Review and test dependency changes before applying any audit fix.
+- Backend production dependencies: 0 known vulnerabilities
+- Frontend production dependencies: 0 known vulnerabilities
 
 ## Deployment-candidate checklist
 
 - Configure production `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, and `PORT`.
 - Configure `VITE_API_URL` before building the frontend.
-- Store `OPENAI_API_KEY` in a secret manager when the OpenAI provider is used.
+- Store NVIDIA, OpenAI, SMTP, and repository-provider credentials in a secret manager.
 - Back up PostgreSQL and run `npx prisma migrate deploy`.
-- Run the dependency audit noted above from the deployment environment.
+- Continue running dependency audits before releases.
 - Run the release verification commands from the deployment guide.
 - Confirm HTTPS, monitoring, backups, and restore procedures.
 - Create and verify the initial administrator and role assignments.
+
+## Planned scope not yet implemented
+
+The SRS remains the broader target specification. Password reset, email
+verification, refresh tokens, SSO, evidence uploads, a user-facing audit-log
+module, RAG, and custom model training remain planned work and are not claimed
+as part of this release candidate.

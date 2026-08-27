@@ -16,7 +16,19 @@ AI-Powered Vulnerability Intelligence & Remediation Platform
 
 VulnGuard AI is an enterprise cybersecurity platform designed to help organizations identify vulnerable software, analyze security risks using Artificial Intelligence, recommend remediation strategies, and manage the complete vulnerability remediation lifecycle.
 
-The platform combines modern web technologies, NVIDIA AI models, Retrieval-Augmented Generation (RAG), and a custom-trained machine learning model to assist security teams in making faster and more accurate decisions.
+The implemented platform combines modern web technologies, a deterministic
+rules engine, and optional NVIDIA Nemotron or OpenAI providers to assist security
+teams in making faster and more consistent remediation decisions. RAG and custom
+model training remain possible future extensions.
+
+### 1.1.1 Implementation status
+
+This SRS defines the target product scope. The current release implements the
+core authenticated multi-tenant inventory, vulnerability, repository scanning,
+AI remediation, reporting, notification, dashboard, and deployment workflows.
+Requirements for password reset, email verification, refresh tokens, SSO,
+evidence uploads, a user-facing audit-log module, RAG, and custom model training
+remain planned and must not be interpreted as completed features.
 
 ---
 
@@ -62,7 +74,8 @@ Frontend
 Backend
 
 - Node.js
-- Express.js
+- NestJS
+- TypeScript
 
 Database
 
@@ -77,8 +90,13 @@ AI Service
 Artificial Intelligence
 
 - NVIDIA Nemotron
-- RAG
-- Custom Machine Learning Model
+- OpenAI
+- Deterministic rules fallback
+
+Planned AI extensions
+
+- Retrieval-Augmented Generation (RAG)
+- Custom machine learning models
 
 Deployment
 
