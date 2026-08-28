@@ -10,10 +10,14 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { EmailVerificationService } from '../notifications/email-verification.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailVerification: EmailVerificationService,
+  ) {}
 
   private userSelect = {
     id: true,
@@ -24,6 +28,7 @@ export class UsersService {
     profileImage: true,
     status: true,
     lastLogin: true,
+    emailVerifiedAt: true,
     createdAt: true,
     updatedAt: true,
     organization: {
@@ -164,6 +169,8 @@ export class UsersService {
       },
       select: this.userSelect,
     });
+
+    await this.emailVerification.issue(user);
 
     return {
       message: 'User created successfully',

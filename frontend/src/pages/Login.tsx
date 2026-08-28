@@ -26,8 +26,8 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
       navigate('/dashboard');
-    } catch {
-      setError('Invalid email or password');
+    } catch (requestError: any) {
+      setError(requestError.response?.data?.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
@@ -82,6 +82,7 @@ function Login() {
             {loading ? 'Signing in...' : 'Login'}
           </button>
         </form>
+        <Link to="/verify-email" className="mt-4 block text-center text-sm text-slate-400 hover:text-cyan-300">Resend email verification</Link>
       </div>
     </div>
   );

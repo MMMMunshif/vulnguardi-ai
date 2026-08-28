@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailVerificationService } from '../notifications/email-verification.service';
 
 jest.mock('bcrypt', () => ({ hash: jest.fn(), compare: jest.fn() }));
 
@@ -30,6 +31,7 @@ describe('AuthService', () => {
     role: { id: 'role-1', roleName: 'Security Analyst' },
     organization: { id: 'org-1', name: 'VulnGuard' },
     department: { id: 'department-1', name: 'Security Operations' },
+    emailVerifiedAt: new Date(),
   };
   const prisma = {
     user: {
@@ -52,6 +54,7 @@ describe('AuthService', () => {
   };
   const jwt = { signAsync: jest.fn() };
   const notifications = { queuePasswordResetEmail: jest.fn() };
+  const emailVerification = { issue: jest.fn(), verify: jest.fn() };
 
   let service: AuthService;
 
@@ -61,7 +64,23 @@ describe('AuthService', () => {
       prisma as unknown as PrismaService,
       jwt as unknown as JwtService,
       notifications as unknown as NotificationsService,
+      emailVerification as unknown as EmailVerificationService,
     );
+  });
+
+  it('requires email verification before login', async () => {
+    prisma.user.findUnique.mockResolvedValue({ ...loginUser, emailVerifiedAt: null });
+    jest.mocked(bcrypt.compare).mockResolvedValue(true as never);
+    await expect(service.login({ email: loginUser.email, password: 'SecurePass123' })).rejects.toThrow('verify your email');
+  });
+
+  it('verifies email tokens and safely resends only when required', async () => {
+    await expect(service.verifyEmail({ token: 'a'.repeat(64) })).resolves.toEqual({ message: 'Email verified successfully' });
+    expect(emailVerification.verify).toHaveBeenCalledWith('a'.repeat(64));
+
+    prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'user@test.com', status: 'ACTIVE', emailVerifiedAt: null });
+    await service.resendVerification({ email: 'user@test.com' });
+    expect(emailVerification.issue).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
   });
 
   it('returns a generic forgot-password response without revealing unknown accounts', async () => {

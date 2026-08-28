@@ -71,6 +71,18 @@ describe('NotificationsService', () => {
     );
   });
 
+  it('sends email verification links using the configured frontend URL', async () => {
+    service.queueEmailVerification('user@example.com', 'verify-token');
+    await new Promise(setImmediate);
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'user@example.com',
+        subject: 'Verify your VulnGuard AI email',
+        text: expect.stringContaining('/verify-email?token=verify-token'),
+      }),
+    );
+  });
+
   it('supports authenticated secure SMTP for password reset emails', async () => {
     process.env.SMTP_PORT = '465';
     process.env.SMTP_SECURE = 'true';

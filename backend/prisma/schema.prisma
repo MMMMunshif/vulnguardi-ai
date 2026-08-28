@@ -69,6 +69,7 @@ model User {
   status          UserStatus   @default(ACTIVE)
 
   lastLogin       DateTime?
+  emailVerifiedAt DateTime?
 
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -83,12 +84,26 @@ model User {
   assignedRemediationActions RemediationAction[]
   auditLogs                  AuditLog[]
   passwordResetTokens       PasswordResetToken[]
+  emailVerificationTokens  EmailVerificationToken[]
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 }
 
 model PasswordResetToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model EmailVerificationToken {
   id        String   @id @default(uuid())
   tokenHash String   @unique
   expiresAt DateTime

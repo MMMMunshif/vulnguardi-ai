@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UsersService } from './users.service';
+import { EmailVerificationService } from '../notifications/email-verification.service';
 
 jest.mock('bcrypt', () => ({ hash: jest.fn() }));
 
@@ -44,7 +45,10 @@ describe('UsersService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new UsersService(prisma as unknown as PrismaService);
+    service = new UsersService(
+      prisma as unknown as PrismaService,
+      { issue: jest.fn() } as unknown as EmailVerificationService,
+    );
   });
 
   it('scopes user listings to the authenticated organization', async () => {

@@ -14,6 +14,9 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailVerificationService } from '../notifications/email-verification.service';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { createHash, randomBytes } from 'crypto';
 
 @Injectable()
@@ -22,6 +25,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailVerification: EmailVerificationService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -99,6 +103,8 @@ export class AuthService {
       },
     });
 
+    await this.emailVerification.issue(user);
+
     return {
       message: 'User registered successfully',
       user,
@@ -131,6 +137,10 @@ export class AuthService {
 
     if (user.status !== 'ACTIVE') {
       throw new UnauthorizedException('User account is not active');
+    }
+
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException('Please verify your email before signing in');
     }
 
     const payload = {
@@ -233,5 +243,21 @@ export class AuthService {
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  async verifyEmail({ token }: VerifyEmailDto) {
+    await this.emailVerification.verify(token);
+    return { message: 'Email verified successfully' };
+  }
+
+  async resendVerification({ email }: ResendVerificationDto) {
+    const response = {
+      message: 'If verification is required, a new link has been sent',
+    };
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (user && user.status === 'ACTIVE' && !user.emailVerifiedAt) {
+      await this.emailVerification.issue(user);
+    }
+    return response;
   }
 }

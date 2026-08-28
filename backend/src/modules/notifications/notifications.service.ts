@@ -28,6 +28,25 @@ export class NotificationsService {
     });
   }
 
+  queueEmailVerification(email: string, token: string): void {
+    void this.sendEmailVerification(email, token).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Email verification delivery failed: ${message}`);
+    });
+  }
+
+  private async sendEmailVerification(email: string, token: string) {
+    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, '');
+    const verifyUrl = `${frontendUrl || 'http://localhost:5173'}/verify-email?token=${encodeURIComponent(token)}`;
+    await this.createTransporter().sendMail({
+      from: process.env.SMTP_FROM,
+      to: email,
+      subject: 'Verify your VulnGuard AI email',
+      text: `Verify your email using this link (expires in 24 hours): ${verifyUrl}`,
+      html: `<p>Verify your VulnGuard AI email using the link below. It expires in 24 hours.</p><p><a href="${verifyUrl}">Verify email</a></p>`,
+    });
+  }
+
   private async sendPasswordResetEmail(email: string, token: string) {
     const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, '');
     const resetUrl = `${frontendUrl || 'http://localhost:5173'}/reset-password?token=${encodeURIComponent(token)}`;

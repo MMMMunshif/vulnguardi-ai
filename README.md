@@ -15,6 +15,7 @@ Organization -> Department -> User -> Device -> Software Inventory
 
 - JWT authentication and role-based access control
 - One-time, expiring password reset links with anti-enumeration responses
+- Expiring email-verification links with safe resend and login enforcement
 - Organization-level tenant isolation
 - Organization, department, user, and device management
 - Software inventory and update-status tracking
