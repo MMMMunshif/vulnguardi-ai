@@ -12,6 +12,8 @@ import VulnerabilityFindings from './pages/VulnerabilityFindings';
 import RemediationActions from './pages/RemediationActions';
 import RepositoryScanning from './pages/RepositoryScanning';
 import AuditLogs from './pages/AuditLogs';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -29,6 +31,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           element={

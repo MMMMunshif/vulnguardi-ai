@@ -25,6 +25,20 @@ services:
         value: gpt-5-mini
       - key: EMAIL_NOTIFICATIONS_ENABLED
         value: "false"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: FRONTEND_URL
+        value: https://vulnguard-ai-frontend.onrender.com
       - key: AI_SERVICE_URL
         value: https://vulnguard-ai-nvidia.onrender.com
       - key: AI_SERVICE_TOKEN

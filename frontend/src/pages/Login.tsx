@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api';
 
 function Login() {
@@ -53,6 +53,7 @@ function Login() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
+            <Link to="/forgot-password" className="mt-2 block text-right text-sm text-cyan-400 hover:text-cyan-300">Forgot password?</Link>
           </div>
 
           <div>

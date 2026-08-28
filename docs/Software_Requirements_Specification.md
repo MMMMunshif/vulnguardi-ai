@@ -26,7 +26,7 @@ model training remain possible future extensions.
 This SRS defines the target product scope. The current release implements the
 core authenticated multi-tenant inventory, vulnerability, repository scanning,
 AI remediation, reporting, notification, dashboard, and deployment workflows.
-Requirements for password reset, email verification, refresh tokens, SSO,
+Requirements for email verification, refresh tokens, SSO,
 evidence uploads, RAG, and custom model training remain planned and must not be
 interpreted as completed features.
 

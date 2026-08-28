@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 jest.mock('bcrypt', () => ({ hash: jest.fn(), compare: jest.fn() }));
 
@@ -35,13 +36,22 @@ describe('AuthService', () => {
       count: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     organization: { findFirst: jest.fn() },
     department: { findFirst: jest.fn() },
     role: { findFirst: jest.fn() },
     auditLog: { create: jest.fn() },
+    passwordResetToken: {
+      deleteMany: jest.fn(),
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    $transaction: jest.fn(),
   };
   const jwt = { signAsync: jest.fn() };
+  const notifications = { queuePasswordResetEmail: jest.fn() };
 
   let service: AuthService;
 
@@ -50,7 +60,55 @@ describe('AuthService', () => {
     service = new AuthService(
       prisma as unknown as PrismaService,
       jwt as unknown as JwtService,
+      notifications as unknown as NotificationsService,
     );
+  });
+
+  it('returns a generic forgot-password response without revealing unknown accounts', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    await expect(service.forgotPassword({ email: 'missing@test.com' })).resolves.toEqual({
+      message: 'If an active account exists, a password reset link has been sent',
+    });
+    expect(prisma.passwordResetToken.create).not.toHaveBeenCalled();
+  });
+
+  it('does not create reset tokens for inactive accounts', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'inactive@test.com', status: 'INACTIVE' });
+    await service.forgotPassword({ email: 'inactive@test.com' });
+    expect(prisma.passwordResetToken.create).not.toHaveBeenCalled();
+    expect(notifications.queuePasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it('creates a hashed reset token and queues an email for an active account', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'user@test.com', status: 'ACTIVE' });
+    prisma.$transaction.mockResolvedValue([]);
+    await service.forgotPassword({ email: 'user@test.com' });
+    expect(prisma.passwordResetToken.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 'user-1', tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    });
+    expect(notifications.queuePasswordResetEmail).toHaveBeenCalledWith('user@test.com', expect.stringMatching(/^[a-f0-9]{64}$/));
+  });
+
+  it('rejects expired password reset tokens', async () => {
+    prisma.passwordResetToken.findUnique.mockResolvedValue({ id: 'token-1', userId: 'user-1', usedAt: null, expiresAt: new Date(Date.now() - 1000) });
+    await expect(service.resetPassword({ token: 'a'.repeat(64), password: 'NewPassword123' })).rejects.toThrow('invalid or expired');
+  });
+
+  it('rejects missing and already-used password reset tokens', async () => {
+    prisma.passwordResetToken.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'token-1', userId: 'user-1', usedAt: new Date(), expiresAt: new Date(Date.now() + 10000),
+    });
+    await expect(service.resetPassword({ token: 'c'.repeat(64), password: 'NewPassword123' })).rejects.toThrow('invalid or expired');
+    await expect(service.resetPassword({ token: 'd'.repeat(64), password: 'NewPassword123' })).rejects.toThrow('invalid or expired');
+  });
+
+  it('hashes the new password and consumes a valid reset token', async () => {
+    prisma.passwordResetToken.findUnique.mockResolvedValue({ id: 'token-1', userId: 'user-1', usedAt: null, expiresAt: new Date(Date.now() + 10000) });
+    jest.mocked(bcrypt.hash).mockResolvedValue('new-hash' as never);
+    prisma.$transaction.mockResolvedValue([]);
+    await expect(service.resetPassword({ token: 'b'.repeat(64), password: 'NewPassword123' })).resolves.toEqual({ message: 'Password reset successfully' });
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: { password: 'new-hash' } });
+    expect(prisma.passwordResetToken.update).toHaveBeenCalledWith({ where: { id: 'token-1' }, data: { usedAt: expect.any(Date) } });
   });
 
   it('blocks public registration after the first user exists', async () => {

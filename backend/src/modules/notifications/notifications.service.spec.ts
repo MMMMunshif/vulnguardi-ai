@@ -56,6 +56,43 @@ describe('NotificationsService', () => {
     expect(nodemailer.createTransport).not.toHaveBeenCalled();
   });
 
+  it('sends password reset links using the configured frontend URL', async () => {
+    service.queuePasswordResetEmail('user@example.com', 'secure-token');
+    await new Promise(setImmediate);
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'user@example.com',
+        subject: 'Reset your VulnGuard AI password',
+        text: expect.stringContaining(
+          'https://vulnguard.example.com/reset-password?token=secure-token',
+        ),
+      }),
+    );
+  });
+
+  it('supports authenticated secure SMTP for password reset emails', async () => {
+    process.env.SMTP_PORT = '465';
+    process.env.SMTP_SECURE = 'true';
+    process.env.SMTP_USER = 'smtp-user';
+    process.env.SMTP_PASS = 'smtp-pass';
+
+    service.queuePasswordResetEmail('user@example.com', 'secure-token');
+    await new Promise(setImmediate);
+
+    expect(nodemailer.createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        port: 465,
+        secure: true,
+        auth: { user: 'smtp-user', pass: 'smtp-pass' },
+      }),
+    );
+    delete process.env.SMTP_PORT;
+    delete process.env.SMTP_SECURE;
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASS;
+  });
+
   it('emails unique active tenant administrators and analysts', async () => {
     process.env.EMAIL_NOTIFICATIONS_ENABLED = 'true';
 

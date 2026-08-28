@@ -21,6 +21,40 @@ export class NotificationsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  queuePasswordResetEmail(email: string, token: string): void {
+    void this.sendPasswordResetEmail(email, token).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Password reset email failed: ${message}`);
+    });
+  }
+
+  private async sendPasswordResetEmail(email: string, token: string) {
+    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, '');
+    const resetUrl = `${frontendUrl || 'http://localhost:5173'}/reset-password?token=${encodeURIComponent(token)}`;
+    const transporter = this.createTransporter();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: email,
+      subject: 'Reset your VulnGuard AI password',
+      text: `Reset your password using this link (expires in 30 minutes): ${resetUrl}`,
+      html: `<p>Reset your VulnGuard AI password using the link below. It expires in 30 minutes.</p><p><a href="${resetUrl}">Reset password</a></p>`,
+    });
+  }
+
+  private createTransporter() {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_FROM) {
+      throw new Error('SMTP_HOST and SMTP_FROM are required');
+    }
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: process.env.SMTP_USER && process.env.SMTP_PASS
+        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        : undefined,
+    });
+  }
+
   queueHighPriorityVulnerabilityAlert(
     finding: HighPriorityVulnerabilityAlert,
   ): void {
