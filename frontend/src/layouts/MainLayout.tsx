@@ -13,6 +13,7 @@ import {
     ClipboardList,
   } from 'lucide-react';
   import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+  import api from '../api/api';
   
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician'] },
@@ -33,8 +34,13 @@ import {
   
     const user = JSON.parse(localStorage.getItem('user') || '{}');
   
-    const handleLogout = () => {
+    const handleLogout = async () => {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        try { await api.post('/auth/logout', { refreshToken }); } catch { /* Local logout still completes. */ }
+      }
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       navigate('/');
     };

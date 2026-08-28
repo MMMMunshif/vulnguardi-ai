@@ -17,6 +17,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { EmailVerificationService } from '../notifications/email-verification.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { createHash, randomBytes } from 'crypto';
 
 @Injectable()
@@ -151,6 +152,7 @@ export class AuthService {
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
+    const refreshToken = await this.createRefreshToken(user.id);
 
     try {
       await this.prisma.auditLog.create({
@@ -174,6 +176,7 @@ export class AuthService {
     return {
       message: 'Login successful',
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         firstName: user.firstName,
@@ -259,5 +262,46 @@ export class AuthService {
       await this.emailVerification.issue(user);
     }
     return response;
+  }
+
+  async refresh({ refreshToken }: RefreshTokenDto) {
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: this.hashToken(refreshToken) },
+      include: { user: { include: { role: true } } },
+    });
+    if (!stored || stored.revokedAt || stored.expiresAt <= new Date() ||
+        stored.user.status !== 'ACTIVE' || !stored.user.emailVerifiedAt) {
+      throw new UnauthorizedException('Refresh token is invalid or expired');
+    }
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id }, data: { revokedAt: new Date() },
+    });
+    const accessToken = await this.jwtService.signAsync({
+      sub: stored.user.id,
+      email: stored.user.email,
+      role: stored.user.role.roleName,
+      organizationId: stored.user.organizationId,
+    });
+    return { accessToken, refreshToken: await this.createRefreshToken(stored.user.id) };
+  }
+
+  async logout({ refreshToken }: RefreshTokenDto) {
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash: this.hashToken(refreshToken), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { message: 'Logout successful' };
+  }
+
+  private async createRefreshToken(userId: string): Promise<string> {
+    const token = randomBytes(48).toString('hex');
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash: this.hashToken(token),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+    return token;
   }
 }

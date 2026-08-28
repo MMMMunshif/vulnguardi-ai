@@ -50,6 +50,9 @@ describe('AuthService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    refreshToken: {
+      create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn(),
+    },
     $transaction: jest.fn(),
   };
   const jwt = { signAsync: jest.fn() };
@@ -225,6 +228,7 @@ describe('AuthService', () => {
     prisma.user.findUnique.mockResolvedValue(loginUser);
     jest.mocked(bcrypt.compare).mockResolvedValue(true as never);
     jwt.signAsync.mockResolvedValue('signed-access-token');
+    prisma.refreshToken.create.mockResolvedValue({ id: 'refresh-1' });
 
     const result = await service.login({
       email: loginUser.email,
@@ -240,6 +244,7 @@ describe('AuthService', () => {
     expect(result).toEqual({
       message: 'Login successful',
       accessToken: 'signed-access-token',
+      refreshToken: expect.stringMatching(/^[a-f0-9]{96}$/),
       user: {
         id: loginUser.id,
         firstName: loginUser.firstName,
@@ -259,5 +264,20 @@ describe('AuthService', () => {
         organizationId: loginUser.organizationId,
       }),
     });
+  });
+
+  it('rotates valid refresh tokens and revokes logout tokens', async () => {
+    prisma.refreshToken.findUnique.mockResolvedValue({
+      id: 'refresh-1', revokedAt: null, expiresAt: new Date(Date.now() + 10000),
+      user: loginUser,
+    });
+    prisma.refreshToken.update.mockResolvedValue({});
+    prisma.refreshToken.create.mockResolvedValue({});
+    prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+    jwt.signAsync.mockResolvedValue('renewed-access-token');
+    const refreshed = await service.refresh({ refreshToken: 'r'.repeat(64) });
+    expect(refreshed.accessToken).toBe('renewed-access-token');
+    expect(refreshed.refreshToken).toMatch(/^[a-f0-9]{96}$/);
+    await expect(service.logout({ refreshToken: 'r'.repeat(64) })).resolves.toEqual({ message: 'Logout successful' });
   });
 });
