@@ -8,9 +8,16 @@ import {
     Post,
     Req,
     UseGuards,
+    UseInterceptors,
+    UploadedFile,
+    Res,
+    StreamableFile,
+    BadRequestException,
   } from '@nestjs/common';
   import { Request } from 'express';
   import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+  import { FileInterceptor } from '@nestjs/platform-express';
+  import type { Response } from 'express';
   import { Roles } from '../auth/decorators/roles.decorator';
   import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
   import { RolesGuard } from '../auth/guards/roles.guard';
@@ -19,7 +26,7 @@ import {
   import { RemediationActionsService } from './remediation-actions.service';
 
   type AuthenticatedRequest = Request & {
-    user: { role: string; organizationId: string };
+    user: { sub: string; role: string; organizationId: string };
   };
   
   @ApiTags('Remediation Actions')
@@ -74,6 +81,29 @@ import {
         id,
         this.getOrganizationScope(request),
       );
+    }
+
+    @Post(':id/evidence')
+    @Roles('Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician')
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024, files: 1 } }))
+    uploadEvidence(@Param('id') id: string, @UploadedFile() file: any, @Req() request: AuthenticatedRequest) {
+      if (!file) throw new BadRequestException('Evidence file is required');
+      return this.remediationActionsService.addEvidence(id, file, request.user.sub, this.getOrganizationScope(request));
+    }
+
+    @Get('evidence/:evidenceId/download')
+    @Roles('Super Admin', 'Organization Admin', 'Security Analyst', 'IT Technician')
+    async downloadEvidence(@Param('evidenceId') evidenceId: string, @Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
+      const evidence = await this.remediationActionsService.getEvidence(evidenceId, this.getOrganizationScope(request));
+      response.setHeader('Content-Type', evidence.mimeType);
+      response.setHeader('Content-Disposition', `attachment; filename="${evidence.fileName.replace(/["\\\r\n]/g, '_')}"`);
+      return new StreamableFile(evidence.data);
+    }
+
+    @Delete('evidence/:evidenceId')
+    @Roles('Super Admin', 'Organization Admin', 'Security Analyst')
+    removeEvidence(@Param('evidenceId') evidenceId: string, @Req() request: AuthenticatedRequest) {
+      return this.remediationActionsService.removeEvidence(evidenceId, this.getOrganizationScope(request));
     }
 
     private getOrganizationScope(request: AuthenticatedRequest) {

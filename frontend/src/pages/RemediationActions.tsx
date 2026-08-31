@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download } from 'lucide-react';
+import { Download, Paperclip, Trash2 } from 'lucide-react';
 import api from '../api/api';
 import { downloadCsv } from '../utils/csv';
 
@@ -82,6 +82,7 @@ type RemediationAction = {
     id: string;
     name: string;
   };
+  evidence: Array<{ id: string; fileName: string; mimeType: string; size: number; createdAt: string }>;
 };
 
 type RemediationForm = {
@@ -253,6 +254,34 @@ function RemediationActions() {
       ...previous,
       [field]: value,
     }));
+  };
+
+  const uploadEvidence = async (actionId: string, file?: File) => {
+    if (!file) return;
+    try {
+      const data = new FormData();
+      data.append('file', file);
+      await api.post(`/remediation-actions/${actionId}/evidence`, data);
+      setMessage('Evidence uploaded successfully');
+      await fetchActions();
+    } catch (requestError: any) {
+      setError(requestError.response?.data?.message || 'Evidence upload failed');
+    }
+  };
+
+  const downloadEvidence = async (evidence: { id: string; fileName: string }) => {
+    const response = await api.get(`/remediation-actions/evidence/${evidence.id}/download`, { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = evidence.fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const deleteEvidence = async (evidenceId: string) => {
+    await api.delete(`/remediation-actions/evidence/${evidenceId}`);
+    await fetchActions();
   };
 
   const handleStatusChange = (status: RemediationForm['status']) => {
@@ -905,7 +934,7 @@ function RemediationActions() {
                       )}
                     </td>
                     <td className="py-4 pr-4">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleEdit(action)}
                           className="bg-blue-500 hover:bg-blue-400 text-white px-3 py-2 rounded-lg text-xs font-semibold"
@@ -919,7 +948,21 @@ function RemediationActions() {
                         >
                           Delete
                         </button>
+                        <label className="cursor-pointer rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500">
+                          <Paperclip size={13} className="mr-1 inline" /> Evidence
+                          <input type="file" className="hidden" accept="image/png,image/jpeg,application/pdf,text/plain" onChange={(event) => void uploadEvidence(action.id, event.target.files?.[0])} />
+                        </label>
                       </div>
+                      {!!action.evidence?.length && (
+                        <div className="mt-2 space-y-1">
+                          {action.evidence.map((item) => (
+                            <div key={item.id} className="flex max-w-56 items-center gap-1 text-[11px]">
+                              <button onClick={() => void downloadEvidence(item)} className="truncate text-cyan-400 hover:underline" title={item.fileName}>{item.fileName}</button>
+                              <button onClick={() => void deleteEvidence(item.id)} className="text-red-400" title="Delete evidence"><Trash2 size={12} /></button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

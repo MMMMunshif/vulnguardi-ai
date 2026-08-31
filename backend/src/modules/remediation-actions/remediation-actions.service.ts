@@ -73,6 +73,10 @@
           email: true,
         },
       },
+      evidence: {
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
+      },
     };
   
     async findAll(organizationId?: string) {
@@ -321,5 +325,38 @@
       return {
         message: 'Remediation action deleted successfully',
       };
+    }
+
+    async addEvidence(id: string, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, userId: string, organizationId?: string) {
+      const action = await this.prisma.remediationAction.findFirst({
+        where: { id, ...(organizationId ? { organizationId } : {}) },
+      });
+      if (!action) throw new NotFoundException('Remediation action not found');
+      const allowed = ['image/png', 'image/jpeg', 'application/pdf', 'text/plain'];
+      if (!allowed.includes(file.mimetype)) throw new BadRequestException('Only PNG, JPEG, PDF, and text evidence is allowed');
+      if (!file.size || file.size > 5 * 1024 * 1024) throw new BadRequestException('Evidence file must be 5 MB or smaller');
+      const evidence = await this.prisma.remediationEvidence.create({
+        data: {
+          fileName: file.originalname.slice(0, 255), mimeType: file.mimetype, size: file.size,
+          data: Uint8Array.from(file.buffer), remediationActionId: id, uploadedById: userId,
+          organizationId: action.organizationId,
+        },
+        select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
+      });
+      return { message: 'Evidence uploaded successfully', evidence };
+    }
+
+    async getEvidence(evidenceId: string, organizationId?: string) {
+      const evidence = await this.prisma.remediationEvidence.findFirst({
+        where: { id: evidenceId, ...(organizationId ? { organizationId } : {}) },
+      });
+      if (!evidence) throw new NotFoundException('Evidence not found');
+      return evidence;
+    }
+
+    async removeEvidence(evidenceId: string, organizationId?: string) {
+      const evidence = await this.getEvidence(evidenceId, organizationId);
+      await this.prisma.remediationEvidence.delete({ where: { id: evidence.id } });
+      return { message: 'Evidence deleted successfully' };
     }
   }

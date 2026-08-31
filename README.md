@@ -28,6 +28,7 @@ Organization -> Department -> User -> Device -> Software Inventory
 - Tenant-scoped email alerts for publicly exploitable vulnerabilities
 - Tenant-scoped login and mutation audit trail with administrative CSV export
 - Remediation assignment, due dates, lifecycle, and security verification
+- Tenant-scoped remediation evidence uploads with protected download and deletion
 - Role-specific dashboards and navigation for administrators, analysts, and technicians
 - Dashboard analytics, overdue alerts, search, filters, CSV exports, and downloadable PDF security reports
 - Swagger API documentation

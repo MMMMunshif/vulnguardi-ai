@@ -28,6 +28,7 @@ describe('RemediationActionsService', () => {
       update: jest.Mock;
     };
     user: { findFirst: jest.Mock };
+    remediationEvidence: { create: jest.Mock; findFirst: jest.Mock; delete: jest.Mock };
   };
 
   beforeEach(() => {
@@ -46,10 +47,32 @@ describe('RemediationActionsService', () => {
         update: jest.fn(),
       },
       user: { findFirst: jest.fn() },
+      remediationEvidence: { create: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
     };
     service = new RemediationActionsService(
       prisma as unknown as PrismaService,
     );
+  });
+
+  it('uploads validated tenant-scoped remediation evidence', async () => {
+    prisma.remediationAction.findFirst.mockResolvedValue({ id: 'action-1', organizationId: 'org-1' });
+    prisma.remediationEvidence.create.mockResolvedValue({ id: 'evidence-1', fileName: 'proof.pdf' });
+    await expect(service.addEvidence('action-1', {
+      originalname: 'proof.pdf', mimetype: 'application/pdf', size: 4, buffer: Buffer.from('test'),
+    }, 'user-1', 'org-1')).resolves.toEqual(expect.objectContaining({ message: 'Evidence uploaded successfully' }));
+    expect(prisma.remediationEvidence.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ organizationId: 'org-1', uploadedById: 'user-1' }) }));
+  });
+
+  it('rejects unsafe evidence types and oversized files', async () => {
+    prisma.remediationAction.findFirst.mockResolvedValue({ id: 'action-1', organizationId: 'org-1' });
+    await expect(service.addEvidence('action-1', { originalname: 'script.exe', mimetype: 'application/octet-stream', size: 1, buffer: Buffer.from('x') }, 'user-1', 'org-1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.addEvidence('action-1', { originalname: 'large.pdf', mimetype: 'application/pdf', size: 6 * 1024 * 1024, buffer: Buffer.from('x') }, 'user-1', 'org-1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('prevents cross-tenant evidence downloads', async () => {
+    prisma.remediationEvidence.findFirst.mockResolvedValue(null);
+    await expect(service.getEvidence('evidence-1', 'org-1')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.remediationEvidence.findFirst).toHaveBeenCalledWith({ where: { id: 'evidence-1', organizationId: 'org-1' } });
   });
 
   it('prevents duplicate remediation actions for one vulnerability', async () => {

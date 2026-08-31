@@ -25,6 +25,7 @@ model Organization {
   vulnerabilityFindings   VulnerabilityFinding[]
   remediationActions      RemediationAction[]
   auditLogs               AuditLog[]
+  remediationEvidence     RemediationEvidence[]
 
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -86,6 +87,7 @@ model User {
   passwordResetTokens       PasswordResetToken[]
   emailVerificationTokens  EmailVerificationToken[]
   refreshTokens            RefreshToken[]
+  remediationEvidence     RemediationEvidence[]
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -318,6 +320,7 @@ model RemediationAction {
 
   assignedUserId          String?
   assignedUser            User?                          @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  evidence                RemediationEvidence[]
 
   createdAt               DateTime                       @default(now())
   updatedAt               DateTime                       @updatedAt
@@ -327,6 +330,25 @@ model RemediationAction {
   @@index([deviceId])
   @@index([organizationId])
   @@index([assignedUserId])
+}
+
+model RemediationEvidence {
+  id                  String   @id @default(uuid())
+  fileName            String
+  mimeType            String
+  size                Int
+  data                Bytes
+  createdAt           DateTime @default(now())
+
+  remediationActionId String
+  remediationAction   RemediationAction @relation(fields: [remediationActionId], references: [id], onDelete: Cascade)
+  uploadedById        String
+  uploadedBy          User @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([remediationActionId, createdAt])
+  @@index([organizationId])
 }
 
 enum OrganizationStatus {
