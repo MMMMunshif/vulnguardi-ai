@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GenerateRemediationRecommendationDto } from './dto/generate-remediation-recommendation.dto';
+import { PrismaService } from '../../prisma/prisma.service';
 
 type RecommendationCore = {
   priority: 'Critical' | 'High' | 'Medium' | 'Low';
@@ -19,20 +20,31 @@ type RecommendationCore = {
 export class AiRecommendationsService {
   private readonly logger = new Logger(AiRecommendationsService.name);
 
+  constructor(private readonly prisma: PrismaService) {}
+
   async generateRemediationRecommendation(
     dto: GenerateRemediationRecommendationDto,
+    organizationId?: string,
   ) {
+    const history = organizationId ? await this.retrieveVerifiedHistory(dto, organizationId) : [];
+    const enrichedDto = history.length ? {
+      ...dto,
+      description: [dto.description, 'Verified organization remediation history:', ...history.map((item) =>
+        `${item.vulnerabilityFinding.cveId || item.vulnerabilityFinding.title}: ${item.recommendedFix || item.verificationNotes || item.actionTitle}`,
+      )].filter(Boolean).join('\n'),
+    } : dto;
     const provider = process.env.AI_PROVIDER?.toLowerCase();
     const useNvidia = provider === 'nvidia';
     const useOpenAi = provider === 'openai';
 
     if (useNvidia && process.env.AI_SERVICE_URL && process.env.AI_SERVICE_TOKEN) {
       try {
-        const recommendation = await this.generateWithNvidia(dto);
+        const recommendation = await this.generateWithNvidia(enrichedDto);
         return this.withMetadata(
           recommendation,
           'VulnGuard AI powered by NVIDIA Nemotron',
           'nvidia',
+          history.length,
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
@@ -44,11 +56,12 @@ export class AiRecommendationsService {
 
     if (useOpenAi && process.env.OPENAI_API_KEY) {
       try {
-        const recommendation = await this.generateWithOpenAi(dto);
+        const recommendation = await this.generateWithOpenAi(enrichedDto);
         return this.withMetadata(
           recommendation,
           'VulnGuard AI powered by OpenAI',
           'openai',
+          history.length,
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
@@ -59,14 +72,35 @@ export class AiRecommendationsService {
     }
 
     return this.withMetadata(
-      this.generateWithRules(dto),
+      this.generateWithRules(enrichedDto),
       useNvidia
         ? 'VulnGuard Rules Engine (NVIDIA fallback)'
         : useOpenAi
           ? 'VulnGuard Rules Engine (OpenAI fallback)'
           : 'VulnGuard AI Smart Recommendation Engine',
       'rules',
+      history.length,
     );
+  }
+
+  private retrieveVerifiedHistory(dto: GenerateRemediationRecommendationDto, organizationId: string) {
+    return this.prisma.remediationAction.findMany({
+      where: {
+        organizationId,
+        status: 'COMPLETED',
+        verificationStatus: 'VERIFIED',
+        OR: [
+          ...(dto.cveId ? [{ vulnerabilityFinding: { cveId: dto.cveId } }] : []),
+          ...(dto.softwareName ? [{ softwareInventory: { softwareName: { contains: dto.softwareName, mode: 'insensitive' as const } } }] : []),
+        ],
+      },
+      orderBy: { completedAt: 'desc' as const },
+      take: 3,
+      select: {
+        actionTitle: true, recommendedFix: true, verificationNotes: true,
+        vulnerabilityFinding: { select: { cveId: true, title: true } },
+      },
+    });
   }
 
   private async generateWithNvidia(
@@ -275,6 +309,7 @@ export class AiRecommendationsService {
     recommendation: RecommendationCore,
     generatedBy: string,
     provider: 'nvidia' | 'openai' | 'rules',
+    retrievedSources = 0,
   ) {
     const slaHours = this.getSlaHours(recommendation.priority);
     return {
@@ -285,6 +320,7 @@ export class AiRecommendationsService {
       ).toISOString(),
       generatedBy,
       provider,
+      rag: { enabled: retrievedSources > 0, retrievedSources },
     };
   }
 

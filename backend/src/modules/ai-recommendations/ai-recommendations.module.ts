@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AiRecommendationsController } from './ai-recommendations.controller';
 import { AiRecommendationsService } from './ai-recommendations.service';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
+  imports: [PrismaModule],
   controllers: [AiRecommendationsController],
   providers: [AiRecommendationsService]
 })

@@ -24,6 +24,7 @@ Organization -> Department -> User -> Device -> Software Inventory
 - Official NVD API lookup with CVE metadata, CVSS, CWE, and CISA KEV context
 - Public GitHub/GitLab repository dependency scanning with OSV.dev advisories
 - Rules-based, OpenAI, or NVIDIA Nemotron remediation recommendations with safe fallback
+- Tenant-scoped RAG using previously verified remediation outcomes for contextual AI guidance
 - Protected Python FastAPI AI microservice for NVIDIA NIM inference
 - Tenant-scoped email alerts for publicly exploitable vulnerabilities
 - Tenant-scoped login and mutation audit trail with administrative CSV export

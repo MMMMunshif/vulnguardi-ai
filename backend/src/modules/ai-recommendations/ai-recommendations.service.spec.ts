@@ -1,7 +1,8 @@
 import { AiRecommendationsService } from './ai-recommendations.service';
 
 describe('AiRecommendationsService', () => {
-  const service = new AiRecommendationsService();
+  const prisma = { remediationAction: { findMany: jest.fn() } };
+  const service = new AiRecommendationsService(prisma as any);
 
   afterEach(() => {
     delete process.env.AI_PROVIDER;
@@ -9,6 +10,14 @@ describe('AiRecommendationsService', () => {
     delete process.env.AI_SERVICE_URL;
     delete process.env.AI_SERVICE_TOKEN;
     jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  it('retrieves only verified remediation history from the authenticated tenant', async () => {
+    prisma.remediationAction.findMany.mockResolvedValue([{ actionTitle: 'Upgrade', recommendedFix: 'Upgrade to 2.0', verificationNotes: 'Verified', vulnerabilityFinding: { cveId: 'CVE-2026-1', title: 'Test' } }]);
+    const result = await service.generateRemediationRecommendation({ title: 'Test', cveId: 'CVE-2026-1', softwareName: 'Example' }, 'org-1');
+    expect(prisma.remediationAction.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1', status: 'COMPLETED', verificationStatus: 'VERIFIED' }), take: 3 }));
+    expect(result.rag).toEqual({ enabled: true, retrievedSources: 1 });
   });
 
   it('creates a critical 24-hour update recommendation for a public exploit', async () => {

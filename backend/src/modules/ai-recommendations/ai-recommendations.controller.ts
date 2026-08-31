@@ -1,4 +1,5 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AiRecommendationsService } from './ai-recommendations.service';
 import { GenerateRemediationRecommendationDto } from './dto/generate-remediation-recommendation.dto';
@@ -19,7 +20,8 @@ export class AiRecommendationsController {
   })
   generateRemediationRecommendation(
     @Body() dto: GenerateRemediationRecommendationDto,
+    @Req() request: Request & { user: { organizationId: string } },
   ) {
-    return this.aiRecommendationsService.generateRemediationRecommendation(dto);
+    return this.aiRecommendationsService.generateRemediationRecommendation(dto, request.user.organizationId);
   }
 }
